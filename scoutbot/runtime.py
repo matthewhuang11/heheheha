@@ -69,6 +69,7 @@ class Runtime:
         for fn, name in ((self.distance_loop, "distance"), (self.scene_loop, "scene"), (self.control_loop, "control"),
                          (self.survivor_loop, "survivors")):
             threading.Thread(target=fn, daemon=True, name=name).start()
+        if self.cfg.get("record", {}).get("enabled"): threading.Thread(target=self.record_loop, daemon=True, name="record").start()
         self.watchdog.start(); self.perception.start(); self.voice.start(); self.net.start(); self.sync.start()
         if self.talk: self.talk.start()
         print(f"[scoutbot] profile={self.cfg['profile']} camera={self.cfg['hw']['camera']} distance={self.cfg['hw']['distance']} "
@@ -196,6 +197,27 @@ class Runtime:
                 try: self.motors.stop()
                 except Exception: pass
             self._stop.wait(max(0.0, period - (time.monotonic() - t0)))
+
+    # ---------------- recording (C15) ----------------
+    def record_loop(self):
+        """Saves camera frames (record.fps, default 2) and every sensor reading to data/recordings/<time>/ for replay:
+        frames as NNNNNN.jpg (the folder camera plays them in order) and sensors.jsonl lines {t, raw, valid}."""
+        rc = self.cfg.get("record", {}); fps = float(rc.get("fps", 2))
+        out = Path(rc.get("dir") or Path(self.cfg["survivors"].get("data_dir", "data")) / "recordings" / time.strftime("%Y%m%d-%H%M%S"))
+        out.mkdir(parents=True, exist_ok=True); self.record_dir = out
+        print(f"[record] saving frames ({fps:g}/s) and sensor readings to {out}", flush=True)
+        n = 0; last_seq = -1; last_frame = 0.0; last_sens = None
+        with open(out / "sensors.jsonl", "a", encoding="utf-8") as f:
+            while not self._stop.is_set():
+                now = time.monotonic()
+                with self.shared.lock: s = self.shared.raw_sensors; jpeg = self.shared.jpeg; seq = self.shared.frame_seq
+                if s.updated_at and s.updated_at != last_sens:
+                    last_sens = s.updated_at
+                    f.write(json.dumps({"t": round(s.updated_at, 3), "raw": [s.left, s.center, s.right], "valid": list(s.valid)}) + "\n"); f.flush()
+                if jpeg is not None and seq != last_seq and now - last_frame >= 1.0 / fps:
+                    last_seq = seq; last_frame = now; n += 1
+                    (out / f"{n:06d}.jpg").write_bytes(jpeg)
+                self._stop.wait(0.05)
 
     # ---------------- survivors ----------------
     def survivor_loop(self):

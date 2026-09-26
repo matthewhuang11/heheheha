@@ -6,7 +6,7 @@ hw:
   camera_index: 1           # overridden by CAMERA_INDEX in .env if set
   camera_folder: dataset/
   camera_fps: 15
-  distance: sliders         # sliders | random | scripted | simworld | hcsr04 | tof
+  distance: sliders         # sliders | random | scripted | replay | simworld | hcsr04 | tof
   random_every_s: 1.0
   motors: fake              # fake | l298n
   # GPIO numbers (BCM). PLACEHOLDERS: the hardware team fills these in.
@@ -99,6 +99,11 @@ sim:
   world: room_basic
   noise: 0.05
   fake_people: true        # false: the sim camera sees nobody (tests the no-person paths)
+
+record:                     # --record: camera frames + sensor readings for replay (C15)
+  enabled: false            # --record sets this
+  fps: 2                    # frames saved per second
+  dir: ""                   # empty = <survivors.data_dir>/recordings/<time>
 
 server:
   host: 127.0.0.1

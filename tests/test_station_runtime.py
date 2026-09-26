@@ -51,3 +51,22 @@ def test_ping_echoes_time(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path); rt = make(tmp_path)
     assert rt.command({"type": "ping", "t": 12.5}) == {"ok": True, "t": 12.5}
     rt.stop()
+
+def test_record_then_replay(tmp_path, monkeypatch):
+    import threading
+    from scoutbot.hw.distance_fake import ReplayDistance
+    from scoutbot.hw.camera_opencv import FolderCamera
+    monkeypatch.chdir(tmp_path); rt = make(tmp_path, "record.enabled=true", "record.fps=20", f"record.dir={tmp_path / 'rec'}")
+    th = threading.Thread(target=rt.record_loop, daemon=True); th.start()
+    from robot.types import Sensors
+    for i in range(6):
+        with rt.shared.lock:
+            rt.shared.raw_sensors = Sensors(left=100 + i, center=50, right=0, valid=(True, True, False), updated_at=time.monotonic())
+            rt.shared.jpeg = open(__file__, "rb").read()[:10]; rt.shared.frame_seq += 1      # any bytes: we only check files appear
+        time.sleep(0.07)
+    rt.stop(); th.join(1)
+    rec = tmp_path / "rec"; lines = (rec / "sensors.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) >= 5 and list(rec.glob("*.jpg"))
+    r = ReplayDistance(str(rec)).read()
+    assert r.valid == (True, True, False) and 100 <= r.left <= 105 and r.center == 50
+    assert ReplayDistance(str(tmp_path / "missing")).read().valid == (False, False, False)
