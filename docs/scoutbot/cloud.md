@@ -54,10 +54,11 @@ To run directly under `systemd` instead, log into the VM console as the limited 
 ```sh
 sudo apt-get update
 sudo apt-get install -y git python3-venv caddy
-git clone --branch agent/robot https://github.com/matthewhuang11/heheheha.git ~/scoutbot
-cd ~/scoutbot
-python3 -m venv .venv
-.venv/bin/pip install fastapi 'uvicorn[standard]' pymongo pydantic
+sudo useradd --system --home-dir /opt/scoutbot --shell /usr/sbin/nologin scoutbot 2>/dev/null || true
+sudo install -d -o scoutbot -g scoutbot /opt/scoutbot
+sudo -u scoutbot git clone --branch agent/robot https://github.com/matthewhuang11/heheheha.git /opt/scoutbot
+sudo -u scoutbot python3 -m venv /opt/scoutbot/.venv
+sudo -u scoutbot /opt/scoutbot/.venv/bin/pip install fastapi 'uvicorn[standard]' pymongo pydantic
 sudo install -m 600 /dev/null /etc/scoutbot-ingest.env
 sudo nano /etc/scoutbot-ingest.env
 ```
@@ -65,17 +66,16 @@ sudo nano /etc/scoutbot-ingest.env
 The environment file contains the names `INGEST_TOKEN` and `MONGODB_URI`. Then install and start the non-root service:
 
 ```sh
-DEPLOY_USER="$(whoami)"
 sudo tee /etc/systemd/system/scoutbot-ingest.service >/dev/null <<EOF
 [Unit]
 Description=Scoutbot Mongo ingest API
 After=network-online.target
 Wants=network-online.target
 [Service]
-User=${DEPLOY_USER}
-WorkingDirectory=/home/${DEPLOY_USER}/scoutbot
+User=scoutbot
+WorkingDirectory=/opt/scoutbot
 EnvironmentFile=/etc/scoutbot-ingest.env
-ExecStart=/home/${DEPLOY_USER}/scoutbot/.venv/bin/uvicorn scoutbot.ingest.app:create_app --factory --host 127.0.0.1 --port 8080
+ExecStart=/opt/scoutbot/.venv/bin/uvicorn scoutbot.ingest.app:create_app --factory --host 127.0.0.1 --port 8080
 Restart=always
 RestartSec=3
 [Install]
