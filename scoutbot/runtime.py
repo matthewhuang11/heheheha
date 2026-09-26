@@ -147,11 +147,11 @@ class Runtime:
         online = sh.online(); prov = cfg["scene"]["provider"]
         raw.vlm_online = failures < 3 and (online or prov in ("sim", "fake"))
         cam_ok = cam_h or prov in ("sim", "fake")
-        dets = self.unhandled(dets, now)                    # KI-38: ignore people a responder marked handled
+        self.fuser.suppress(self._handled_positions(now))   # KI-38: Fuser owns handled-person suppression each tick
         person = fresh_person(dets, det_at, now, cfg["perception"]["yolo"].get("max_age_s", 1.0))
-        if scene is not None and scene.people.visible and self._scene_person_handled(scene, now):
-            scene = self._scene_without_person(scene)
-        fused = self.fuser.fuse(scene, person)
+        person_position = self._detection_position(person) if person else None
+        scene_position = self._scene_person_position(scene, now) if scene is not None and scene.people.visible else None
+        fused = self.fuser.fuse(scene, person, person_position, scene_position)
         dec = self.controller.step(raw, fused, scene_at, cam_ok, now)
         lost = link_check(mode, link_at, now, cfg["safety"])
         if lost: self.modes.request(Mode.STOPPED, lost); mode = Mode.STOPPED
@@ -160,7 +160,7 @@ class Runtime:
         else: want = Action.STOP
         L, C, R = dec.filtered.values()
         cam_usable = camera_note(raw, fused, now, scene_at, Context(DEFAULT, cam_ok)) == ""
-        yolo_hold = person is not None and person.distance == "near" and not cam_usable
+        yolo_hold = person is not None and person.distance == "near" and not cam_usable and not self.fuser.is_suppressed(person_position)
         res = self.gate.check(want, mode, L, C, R, raw.fresh(now, DEFAULT.sensor_stale_s), now, yolo_hold)
         if mode == Mode.AUTO and res.veto and "blocked" in res.veto:
             print(f"[gate] vetoed AUTO {want.value}: {res.veto} (the brain should not have chosen this)", flush=True)
@@ -233,32 +233,13 @@ class Runtime:
             if s: out.append((s.pose.x_cm, s.pose.y_cm, self.cfg["survivors"].get("merge_cm", 85) + 80.0))
         return out
 
-    def unhandled(self, dets: list, now: float) -> list:
-        """Detections minus those whose estimated position falls on a handled survivor. Safety is unchanged: the distance
-        sensors and the gate still stop the robot before anything; only the 'stop for this person' hold is released."""
-        spots = self._handled_positions(now) if self.handled else []
-        if not spots or not dets: return dets
-        import math
-        pose = self.pose.pose(); keep = []
-        for d in dets:
-            x, y = Registry.estimate(d, pose, self.cfg["survivors"])
-            if not any(math.hypot(x - hx, y - hy) <= r for hx, hy, r in spots): keep.append(d)
-        return keep
+    def _detection_position(self, det: PersonDetection) -> tuple[float, float]:
+        return Registry.estimate(det, self.pose.pose(), self.cfg["survivors"])
 
-    def _scene_person_handled(self, scene, now: float) -> bool:
-        if not self.handled or scene.people.distance not in ("near", "mid", "far"): return False
+    def _scene_person_position(self, scene, now: float) -> tuple[float, float] | None:
+        if scene.people.distance not in ("near", "mid", "far"): return None
         where = scene.people.where if scene.people.where in ("left", "center", "right") else "center"
-        d = PersonDetection(source="gemini", where=where, distance=scene.people.distance, confidence=1.0, at=now)
-        return not self.unhandled([d], now)
-
-    def _scene_without_person(self, scene):
-        """Cached copy of Gemini's report with its (handled) person removed: the same object while the input is the same,
-        because the brain's SceneFilter treats every new object as a new report."""
-        if getattr(self, "_nop_src", None) is not scene:
-            from robot.types import People
-            self._nop_src = scene
-            self._nop_out = scene.model_copy(update={"people": People(visible=False, where="none", distance="none")})
-        return self._nop_out
+        return self._detection_position(PersonDetection(source="gemini", where=where, distance=scene.people.distance, confidence=1.0, at=now))
 
     # ---------------- survivors ----------------
     def survivor_loop(self):

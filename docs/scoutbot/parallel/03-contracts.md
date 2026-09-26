@@ -46,7 +46,10 @@ class PersonDetection(BaseModel):          # scoutbot/types.py (C owns the file,
 - `PerceptionWorker` writes **confirmed** detections only: `shared.detections` (list), `shared.det_at` (monotonic), `shared.det_fps`, and `shared.det_status`.
 - **`det_status` values have meaning:** `"running"`, `"sim"` and anything starting with `"remote"` = a live detector. The runtime's survivor loop only falls back to Gemini's people report when the status is none of these (`"off"`, `"loading model"`, `"unavailable: ..."`, `"error: ..."`). Keep those prefixes.
 - `POST /api/detections` body: `{"detections": [PersonDetection...], "fps": float}`. The server rewrites `at` to the robot's clock.
-- `Fuser.fuse(scene, person) -> SceneReport | None` must return **the same object** while its inputs are unchanged (the SceneFilter cache rule).
+- `Fuser.suppress(positions)` receives handled survivor `(x_cm, y_cm, radius_cm)` positions each control tick.
+  `Fuser.fuse(scene, person, person_position=None, scene_position=None) -> SceneReport | None` removes only people at
+  those positions before fusion and returns **the same object** while its inputs and suppression state are unchanged
+  (the SceneFilter cache rule).
 
 ## 3. Safety [A] → runtime [C]
 
