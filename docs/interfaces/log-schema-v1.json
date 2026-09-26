@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://disaster-response-robot.local/schemas/log-schema-v1.json",
+  "title": "Disaster Response Robot JSON Lines Log Event V1",
+  "description": "Each newline is exactly one independently valid JSON event. UTF-8, LF line endings, no blank lines, and no JSON arrays are permitted.",
+  "oneOf": [
+    { "$ref": "#/$defs/controlTick" },
+    { "$ref": "#/$defs/lifecycleTransition" },
+    { "$ref": "#/$defs/vlmValidation" }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": ["log_schema_version", "event_type", "event_id", "run_id", "sequence", "recorded_at", "monotonic_ms"],
+      "properties": {
+        "log_schema_version": { "const": "log/v1" },
+        "event_type": { "type": "string" },
+        "event_id": { "type": "string", "format": "uuid" },
+        "run_id": { "type": "string", "format": "uuid" },
+        "sequence": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+        "recorded_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+        "monotonic_ms": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+      }
+    },
+    "distance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validity", "distance_cm", "observed_at", "expires_at_monotonic_ms", "source_id", "provenance", "age_ms"],
+      "properties": {
+        "validity": { "enum": ["valid", "invalid", "expired", "unavailable", "rejected"] },
+        "distance_cm": { "type": ["number", "null"], "minimum": 2, "maximum": 400 },
+        "observed_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+        "expires_at_monotonic_ms": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+        "source_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$" },
+        "provenance": { "enum": ["hardware", "provider", "derived", "operator", "replay", "simulation"] },
+        "age_ms": { "type": "integer", "minimum": 0, "maximum": 500 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "validity": { "const": "valid" } }, "required": ["validity"] },
+          "then": { "properties": { "distance_cm": { "type": "number", "minimum": 2, "maximum": 400 } } },
+          "else": { "properties": { "distance_cm": { "const": null } } }
+        }
+      ]
+    },
+    "scene": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["validity", "schema_version", "frame_id", "observed_at", "expires_at_monotonic_ms", "source_id", "provenance", "age_ms", "report"],
+          "properties": {
+            "validity": { "enum": ["valid", "invalid", "expired", "unavailable", "rejected"] },
+            "schema_version": { "const": 1 },
+            "frame_id": { "type": "string", "format": "uuid" },
+            "observed_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+            "expires_at_monotonic_ms": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "source_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$" },
+            "provenance": { "enum": ["provider", "replay", "simulation"] },
+            "age_ms": { "type": "integer", "minimum": 0, "maximum": 6000 },
+            "report": { "$ref": "vlm-contract-v1.schema.json" }
+          }
+        }
+      ]
+    },
+    "action": { "enum": ["STOP", "FORWARD", "FORWARD_SLOW", "TURN_LEFT", "TURN_RIGHT"] },
+    "controlTick": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["event_type", "snapshot_id", "lifecycle_state", "operator_status", "fault_indications", "sensors", "scene", "vlm_status", "decision", "safety"],
+          "properties": {
+            "log_schema_version": { "const": "log/v1" },
+            "event_type": { "const": "control_tick" },
+            "event_id": { "type": "string", "format": "uuid" },
+            "run_id": { "type": "string", "format": "uuid" },
+            "sequence": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 },
+            "recorded_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+            "monotonic_ms": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "snapshot_id": { "type": "string", "format": "uuid" },
+            "lifecycle_state": { "enum": ["BOOTING", "SELF_TEST", "READY", "ACTIVE", "FAILSAFE_LATCHED", "E_STOP_LATCHED", "SHUTDOWN"] },
+            "operator_status": { "enum": ["SAFE_STOP", "RUNNING"] },
+            "fault_indications": { "type": "array", "uniqueItems": true, "items": { "enum": ["SENSOR_FAULT", "VLM_FAULT", "CONTROL_FAULT", "E_STOP", "MOTOR_FAULT"] } },
+            "sensors": {
+              "type": "object", "additionalProperties": false, "required": ["left", "center", "right"],
+              "properties": { "left": { "$ref": "#/$defs/distance" }, "center": { "$ref": "#/$defs/distance" }, "right": { "$ref": "#/$defs/distance" } }
+            },
+            "scene": { "$ref": "#/$defs/scene" },
+            "vlm_status": { "enum": ["online", "degraded", "offline"] },
+            "decision": {
+              "type": ["object", "null"], "additionalProperties": false,
+              "required": ["requested_action", "rule_id"],
+              "properties": { "requested_action": { "$ref": "#/$defs/action" }, "rule_id": { "type": "integer", "minimum": 1, "maximum": 8 } }
+            },
+            "safety": {
+              "type": "object", "additionalProperties": false,
+              "required": ["final_action", "outcome", "motion_permit", "veto_reasons"],
+              "properties": {
+                "final_action": { "$ref": "#/$defs/action" },
+                "outcome": { "enum": ["passed", "overridden", "latched_stop", "cut_power"] },
+                "motion_permit": { "enum": ["issued", "denied", "expired", "not_applicable"] },
+                "veto_reasons": { "type": "array", "uniqueItems": true, "items": { "enum": ["sensor_stale", "sensor_invalid", "all_sensors_invalid", "forward_clearance", "turn_clearance", "permit_expired", "renewal_expired", "decision_timeout", "loop_watchdog", "manual_kill", "lifecycle_not_active", "vlm_fault", "camera_fault", "reverse_rejected", "motor_fault"] } }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "lifecycleTransition": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["event_type", "from_state", "to_state", "trigger", "authority", "reset_token_id"],
+          "properties": {
+            "log_schema_version": { "const": "log/v1" }, "event_type": { "const": "lifecycle_transition" },
+            "event_id": { "type": "string", "format": "uuid" }, "run_id": { "type": "string", "format": "uuid" }, "sequence": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }, "recorded_at": { "type": "string", "format": "date-time", "pattern": "Z$" }, "monotonic_ms": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "from_state": { "enum": ["BOOTING", "SELF_TEST", "READY", "ACTIVE", "FAILSAFE_LATCHED", "E_STOP_LATCHED", "SHUTDOWN"] },
+            "to_state": { "enum": ["BOOTING", "SELF_TEST", "READY", "ACTIVE", "FAILSAFE_LATCHED", "E_STOP_LATCHED", "SHUTDOWN"] },
+            "trigger": { "type": "string", "enum": ["boot", "self_test_pass", "start_authorized", "safety_fault", "manual_kill", "physical_reset", "shutdown"] },
+            "authority": { "enum": ["system", "local_operator", "physical_reset_switch"] },
+            "reset_token_id": { "type": ["string", "null"], "pattern": "^[A-Fa-f0-9]{16,64}$" }
+          }
+        }
+      ]
+    },
+    "vlmValidation": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["event_type", "request_id", "frame_id", "outcome", "round_trip_ms", "provider_id", "response_sha256"],
+          "properties": {
+            "log_schema_version": { "const": "log/v1" }, "event_type": { "const": "vlm_validation" },
+            "event_id": { "type": "string", "format": "uuid" }, "run_id": { "type": "string", "format": "uuid" }, "sequence": { "type": "integer", "minimum": 0, "maximum": 9223372036854775807 }, "recorded_at": { "type": "string", "format": "date-time", "pattern": "Z$" }, "monotonic_ms": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+            "request_id": { "type": "string", "format": "uuid" }, "frame_id": { "type": "string", "format": "uuid" }, "outcome": { "enum": ["accepted", "timeout", "transport_error", "provider_error", "schema_rejected"] }, "round_trip_ms": { "type": "integer", "minimum": 1, "maximum": 4000 }, "provider_id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$" }, "response_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        }
+      ]
+    }
+  },
+  "x-versioning": { "contract": "log/v1", "rule": "Write a new schema file and retain old readers for any incompatible event change." },
+  "x-privacy-and-retention": {
+    "classification": "operational safety record; may contain camera-derived observations and bounded notes",
+    "prohibited_data": ["raw frames", "face embeddings", "names", "voice content", "GPS coordinates", "credentials", "prompt text", "raw provider response"],
+    "redaction": "Persist notes only after control-character removal and redact secrets using the configured redactor. Use hashes and frame IDs instead of raw payloads.",
+    "retention": "Default event-log retention is 30 days and raw-frame retention is 7 days. Expiry or deletion must be auditable. Retention may be shortened by policy, never lengthened by a VLM response.",
+    "access": "Restrict to authorized operators and replay tooling. Export requires redaction and preserves provenance."
+  }
+}
