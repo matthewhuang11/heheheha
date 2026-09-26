@@ -42,7 +42,7 @@ class Runtime:
         self.fuser = Fuser(); self.modes = ModeController(self.shared, self.bus); self.health = CameraHealth()
         self.watchdog = MotorWatchdog(self.motors, cfg["safety"].get("motor_watchdog_s", 0.5))
         self.pose = DeadReckoning(cfg, start=self.world.pose() if self.world else None)
-        self.map = MapBuilder()
+        self.map = MapBuilder(sensor_angles=cfg["hw"].get("sensor_angles", (30, 0, -30)))   # [robot] wiring: KI-39
         data_dir = Path(cfg["survivors"].get("data_dir", "data")); data_dir.mkdir(parents=True, exist_ok=True)
         from scoutbot.sync import resolve_sinks
         from scoutbot.sync.outbox import Outbox, SyncWorker
