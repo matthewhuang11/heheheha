@@ -3,7 +3,7 @@
 
 hw:
   camera: opencv            # opencv | folder | synthetic
-  camera_index: 1           # overridden by CAMERA_INDEX in .env if set
+  camera_index: 0           # portable default; CAMERA_INDEX in .env overrides it
   camera_folder: dataset/
   camera_fps: 15
   distance: sliders         # sliders | random | scripted | simworld | hcsr04 | tof

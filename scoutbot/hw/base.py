@@ -47,8 +47,8 @@ def build(cfg: dict, shared, world=None):
     hw = cfg["hw"]
     cam_kind = hw["camera"]
     if cam_kind == "opencv":
-        from scoutbot.hw.camera_opencv import OpenCVCamera
-        camera = OpenCVCamera(hw["camera_index"])
+        from scoutbot.hw.camera_opencv import open_best_camera
+        camera = open_best_camera(hw["camera_index"])
         if not camera.ok and world is not None:           # no webcam: fall back to a synthetic view in the sim
             from scoutbot.hw.camera_opencv import SyntheticCamera
             camera = SyntheticCamera(world)
