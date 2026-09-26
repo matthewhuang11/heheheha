@@ -17,3 +17,4 @@ data/
 # editor / OS noise
 .DS_Store
 .pytest_cache/
+scoutbot-*/
