@@ -6,11 +6,11 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
-## L – Live   (phase 2; updated 19:07 EDT, branch agent/live @ f43bd1e)
-Done (on main): Initial main health at `3b61ce8` was green: 144 tests; 60 s demo sim 1 survivor, 0 contacts, 0 watchdog trips.
-Done (on my branch, not merged yet): [live] xAI scene provider (`f43bd1e`): Grok 4.3 image requests use xAI's OpenAI-compatible HTTPS endpoint, a fixed trusted host, bounded retry/timeout, and the existing `SceneReport` validation. Laptop config selects `scene.provider: xai`; Gemini remains reply/triage only.
-Doing now: xAI provider validation and documentation are complete; merge readiness checks are green.
-Next: Merge the xAI scene-provider milestone after the branch is pushed; then resume the camera/phone and other live-service acceptance work.
+## L – Live   (phase 2; updated 19:11 EDT, branch agent/live @ 2336892)
+Done (on main): xAI scene provider merged as `12c61ce`: Grok 4.3 image requests use xAI's OpenAI-compatible HTTPS endpoint, a fixed trusted host, bounded retry/timeout, and the existing `SceneReport` validation. Laptop config selects `scene.provider: xai`; Gemini remains reply/triage only. Main validation: 165 tests passed in 18.50 s; 20-second sim had 1 survivor, 0 contacts, 0 watchdog trips.
+Done (on my branch, not merged yet): -
+Doing now: xAI provider is merged; resume remaining live-service validation.
+Next: Configure and rerun the camera/phone and other blocked live-service acceptance checks.
 Blocked on: This worktree's minimal xAI fixture request found `XAI_API_KEY` unavailable at runtime, so a live Grok scene result is not claimed. Ollama, ElevenLabs, MongoDB, and Tiger are also unconfigured; camera access remains denied.
 Needs Matthew: (1) In System Settings > Privacy & Security > Camera, allow Terminal (or the terminal app running Scoutbot), then confirm it is allowed; about 1 minute. (2) Add authorized `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, and `TIGER_DATABASE_URL` to `scoutbot-b/.env`, then tell L; about 3 minutes. (3) Open Ollama and run `ollama pull qwen2.5:3b`, then leave it running; about 5-15 minutes. (4) After camera access is granted, stand or lie partly behind an obstacle in webcam view and have a same-Wi-Fi phone ready for the laptop/phone run; about 8 minutes.
 Requests for R:
