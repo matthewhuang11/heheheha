@@ -24,7 +24,7 @@ For real hardware, keep the wheels off the ground and confirm the prompt before 
 
 - Sim motor bench, 2026-09-26: FORWARD reached left/right `+0.60/+0.60`; FORWARD_SLOW `+0.35/+0.35`; turns `-/+0.45`; BACK_UP `-0.35/-0.35` at the halfway check.
 - Laptop camera check, 2026-09-26: selected index 1 at 1280x720, 37.3 FPS, frames not black. The configured `.env` index remains honored.
-- YOLO laptop benchmark, 2026-09-26: 6.88 FPS at 320 px and 7.75 FPS at 640 px on Apple M1 CPU. NCNN 320 export completed in 12.4 seconds; output folder is `yolov8n_ncnn_model` (12.1 MB, ignored and must be copied or exported on the Pi).
+- YOLO laptop benchmark, 2026-09-26: 6.88 FPS at 320 px and 7.75 FPS at 640 px on Apple M1 CPU. NCNN 320 export completed in 12.4 seconds; exported NCNN ran at 16.46 FPS on the laptop. The folder is `yolov8n_ncnn_model` (12.1 MB, ignored and must be copied or exported on the Pi).
 
 ## Pi bring-up log
 

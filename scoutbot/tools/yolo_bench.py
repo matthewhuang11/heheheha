@@ -21,6 +21,7 @@ def parser():
     )
     parser.add_argument("--profile", default="mac")
     parser.add_argument("--folder")
+    parser.add_argument("--model", help="override perception.yolo.model, for example yolov8n_ncnn_model")
     parser.add_argument("--imgsz", type=int, choices=[320, 640], default=320)
     parser.add_argument("--export-ncnn", action="store_true")
     parser.add_argument(
@@ -43,6 +44,8 @@ def main(argv=None):
     args = parser().parse_args(argv)
     cfg = load(args.profile)
     ycfg = dict(get(cfg, "perception.yolo", {}), imgsz=args.imgsz)
+    if args.model:
+        ycfg["model"] = args.model
     detector = YoloDetector(ycfg)
     if args.export_ncnn:
         export_ncnn(detector, args.imgsz)
