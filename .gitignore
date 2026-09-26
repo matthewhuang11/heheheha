@@ -10,3 +10,7 @@ sim_output.txt
 dataset/
 eval_*_output.txt
 data/
+*.pt
+*.onnx
+*_ncnn_model/
+data/camcheck/
