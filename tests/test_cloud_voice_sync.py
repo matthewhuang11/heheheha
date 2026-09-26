@@ -3,7 +3,7 @@ import wave
 from scoutbot.sync import resolve_sinks
 from scoutbot.sync.tiger import ssl_required
 from scoutbot.voice.speaker import pcm_to_wav
-from scoutbot.talk.models import SAFE_FALLBACK_REPLY, clean_reply
+from scoutbot.talk.models import CANNED_REPLIES, CannedTalk, GREETING, SAFE_FALLBACK_REPLY, clean_reply
 
 def test_pcm_to_wav(tmp_path):
     path = tmp_path / "voice.wav"; pcm_to_wav(b"\x00\x00\x01\x00", str(path))
@@ -21,4 +21,10 @@ def test_tiger_url_adds_tls_requirement():
 
 def test_reply_filter_replaces_promises_and_unsafe_medical_advice():
     assert clean_reply("Rescue will arrive in 5 minutes. Take this medicine.") == SAFE_FALLBACK_REPLY
+    assert clean_reply("Help is being called. Apply a tourniquet.") == SAFE_FALLBACK_REPLY
     assert clean_reply("Stay calm. Can you tell me where it hurts? A third sentence.") == "Stay calm. Can you tell me where it hurts?"
+
+def test_canned_fallback_and_greeting_make_no_rescue_promise():
+    assert "help is" not in GREETING.lower()
+    canned = CannedTalk()
+    assert [canned.reply([], "") for _ in range(3)] == CANNED_REPLIES

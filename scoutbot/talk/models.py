@@ -15,17 +15,18 @@ def _prompt(kind: str, version: str = "v1") -> str:
         candidate = PROMPTS / f"{kind}_v1.txt"
     return candidate.read_text(encoding="utf-8")
 
-GREETING = "Hello, I'm a rescue robot. Help is being called. Can you hear me?"
+GREETING = "Hello, I'm a rescue robot. Can you hear me?"
 CANNED_REPLIES = [
-    "Help is on the way. Stay where you are if you can. Are you hurt?",
-    "A responder has been told where you are. Can you move your arms and legs?",
-    "Stay still and stay calm. Is anyone else with you?",
+    "Stay calm if you can. Can you tell me where it hurts?",
+    "Can you move your arms and legs?",
+    "Stay calm if you can. Is anyone else with you?",
 ]
 SAFE_FALLBACK_REPLY = "Stay calm if you can. Can you tell me where it hurts?"
 _UNSAFE_REPLY = re.compile(
-    r"\b(?:in\s+\d+\s*(?:minutes?|hours?)|help\s+is\s+on\s+the\s+way|rescue\s+(?:is|will)|"
-    r"(?:you|we)\s+will\s+be\s+fine|move\s+toward|take\s+(?:this|that)\s+medicine|"
-    r"(?:apply|use)\s+(?:a\s+)?tourniquet)\b",
+    r"\b(?:in\s+\d+\s*(?:minutes?|hours?)|help\s+(?:is|has been|will be)\s+(?:called|on\s+the\s+way|coming)|"
+    r"(?:a\s+)?responder\s+(?:has been|is|will be)\s+(?:told|coming)|rescue\s+(?:is|will)|"
+    r"(?:you|we)\s+will\s+be\s+fine|move\s+toward|take\s+(?:this|that|any)\s+(?:medicine|medication|painkiller)|"
+    r"(?:apply|use)\s+(?:a\s+)?(?:tourniquet|bandage)|(?:clean|treat)\s+(?:the\s+)?(?:wound|injury))\b",
     re.IGNORECASE,
 )
 
@@ -91,7 +92,7 @@ class CannedTalk:
     def triage_facts(self, chat, context, snapshot=None) -> TriageFacts:
         raise RuntimeError("no model available")
     def reply(self, chat, context) -> str:
-        t = CANNED_REPLIES[self.i % len(CANNED_REPLIES)]; self.i += 1; return t
+        t = CANNED_REPLIES[self.i % len(CANNED_REPLIES)]; self.i += 1; return clean_reply(t)
 
 def clean_reply(text: str) -> str:
     t = " ".join((text or "").strip().strip('"').split())

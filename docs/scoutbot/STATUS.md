@@ -21,17 +21,17 @@ Known issues fixed (KI-xx): KI-01 on branch, pending merge.
 
 ---
 
-## B – Cloud & Talk   (updated 10:34 EDT, branch agent/cloud @ 37a53e6)
+## B – Cloud & Talk   (updated 12:47 EDT, branch agent/cloud @ pending push)
 Done (on main): B1 / KI-03 safe `.env.example`; cached Gemini scene calls; configured prompt/history support; cross-platform cloud and local voice; automatic configured sync sinks; Mongo indexes; Tiger TLS; safe manual service-check tools and cloud guide.
-Done (on my branch, not merged yet):
-Doing now: Awaiting live service measurements on authorized Gemini, Ollama, ElevenLabs, MongoDB, and Tiger accounts.
-Next: Record live measurements and coordinate removal of Station's profile-level empty sync sink overrides.
-Blocked on: No code blocker. Live-service acceptance checks require the configured external accounts and services.
+Done (on my branch, not merged yet): Merged current `origin/main`; B11 safety filter now covers model replies, canned fallback, and greeting wording.
+Doing now: Validating and pushing the safety completion.
+Next: Record live measurements with authorized Gemini, Ollama, ElevenLabs, MongoDB, and Tiger services.
+Blocked on: Live-service acceptance checks require configured external accounts and services; no credentials or local service endpoints are available in this environment.
 Requests for A: None.
-Requests for C: Please remove `sync.sinks: []` profile overrides after B7 lands, so auto-configured sinks work on laptops and sim.
+Requests for C: None (`sync.sinks: []` profile overrides are removed on current main).
 Edits to files I don't own: `scoutbot/runtime.py`, 3-line automatic sink wiring in 7d13014, merged to main.
 Contract changes: Added `resolve_sinks(cfg) -> list[str]` as documented in the existing contract plan; callers retain the same Outbox API.
-Numbers measured: 103 tests passed in 4.12 s. Required 20-second demo sim passed: 0 contacts, 0 watchdog trips. Earlier B1 sim created 1 survivor with 0 contacts and 0 watchdog trips.
+Numbers measured: 19 targeted cloud/talk tests passed in 0.73 s; full suite 139 passed in 23.09 s. Required 20-second sim: 1 survivor, 0 contacts, 0 watchdog trips. No live-service figures claimed.
 Known issues fixed (KI-xx): KI-03, KI-10, KI-12, KI-20, KI-35, KI-36, KI-43.
 
 ---
