@@ -6,6 +6,7 @@
 - Gemini scene reports keep the frozen `SceneReport` schema, use JPEG quality 70, retry server overloads, and reuse a client per API key.
 - Gemini, Ollama, and canned replies route through a three-failure, 30-second circuit breaker. Triage extracts facts and applies local preliminary rules.
 - Talk uses the configured history limit and v1/v2 prompts. The v2 prompt enforces short, calm replies with one question.
+- All Gemini, Ollama, and canned replies pass a safety filter; promises of rescue/timing and unsafe medical instructions are replaced with a calm fallback question.
 - ElevenLabs automatically falls back to local speech. Local speech supports macOS `say`, Windows PowerShell SpeechSynthesizer, and Linux/Pi `espeak-ng` or `espeak`. Windows ElevenLabs audio uses standard-library WAV wrapping.
 - Sync resolves `sync.sinks: auto` from non-empty MongoDB/Tiger environment values. Mongo creates the required indexes and Tiger adds `sslmode=require` when missing.
 
@@ -45,4 +46,4 @@ Mongo sightings: `db.sightings.aggregate([{$group:{_id:'$survivor_id',count:{$su
 
 ## Known limits
 
-Live Gemini, Ollama, ElevenLabs, MongoDB Atlas, and Tiger Data measurements are intentionally not fabricated. Run the matching checks with authorized services before a live demo. The profile overrides `sync.sinks: []` in `mac.yaml` and `sim.yaml` still need removal by Station for automatic sync to activate in those profiles.
+Live Gemini, Ollama, ElevenLabs, MongoDB Atlas, and Tiger Data measurements are intentionally not fabricated. Run the matching checks with authorized services before a live demo. `main` now removes the profile-level empty sync-sink overrides, so configured automatic sinks can activate.
