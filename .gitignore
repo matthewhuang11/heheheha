@@ -10,7 +10,10 @@ sim_output.txt
 dataset/
 eval_*_output.txt
 data/
+# model weights and exports (large; download or export locally)
 *.pt
 *.onnx
 *_ncnn_model/
-data/camcheck/
+# editor / OS noise
+.DS_Store
+.pytest_cache/

@@ -44,8 +44,9 @@ class Runtime:
         self.pose = DeadReckoning(cfg, start=self.world.pose() if self.world else None)
         self.map = MapBuilder()
         data_dir = Path(cfg["survivors"].get("data_dir", "data")); data_dir.mkdir(parents=True, exist_ok=True)
+        from scoutbot.sync import resolve_sinks
         from scoutbot.sync.outbox import Outbox, SyncWorker
-        self.outbox = Outbox(data_dir, cfg["sync"].get("sinks", []))
+        self.outbox = Outbox(data_dir, resolve_sinks(cfg))
         self.registry = Registry(cfg, self.bus, self.outbox, data_dir)
         from scoutbot.voice.speaker import Speaker
         self.voice = Speaker(cfg, self.shared)
@@ -58,6 +59,7 @@ class Runtime:
         self.net = NetWorker(cfg, self.shared, self.bus); self.sync = SyncWorker(cfg, self.shared, self.outbox)
         self.log_path = Path("logs"); self.log_path.mkdir(exist_ok=True); self.log_file = self.log_path / "scoutbot_run.jsonl"
         self._last_log = 0.0; self._last_tel = 0.0; self._det_seen = None; self._scene_seen = None
+        self._surv_cache = None; self._surv_at = 0.0; self._surv_seq = 0
         with self.shared.lock: self.shared.services["gemini_scene"] = cfg["scene"]["provider"]
         if start_workers: self.start()
 
@@ -175,7 +177,7 @@ class Runtime:
                    "scene_age": (now - scene_at) if scene_at else None, "person": person.model_dump() if person else None,
                    "brain": {"action": dec.action.value, "rule": dec.rule}, "final": res.action.value, "veto": res.veto,
                    "pose": pose.model_dump(), "online": online}
-            with open(self.log_file, "a") as f: f.write(json.dumps(rec) + "\n")
+            with open(self.log_file, "a", encoding="utf-8") as f: f.write(json.dumps(rec) + "\n")
         hz = cfg["sync"].get("telemetry_hz", 1)
         if hz and wall - self._last_tel >= 1.0 / hz and self.outbox.sinks:
             self._last_tel = wall
@@ -226,6 +228,7 @@ class Runtime:
         t = msg.get("type"); sh = self.shared; now = time.monotonic()
         with sh.lock: sh.link_at = now                      # any message counts as a heartbeat
         if t == "heartbeat": return None
+        if t == "ping": return {"ok": True, "t": msg.get("t")}     # the dashboard measures round-trip time
         if t == "estop": self.modes.estop(); self.motors.stop(); return {"ok": True}
         if t == "mode":
             m = Mode(msg["mode"]); self.modes.request(m, "responder")
@@ -244,11 +247,15 @@ class Runtime:
             if self.talk: self.talk.submit("retriage", msg["survivor_id"])
             return {"ok": True}
         if t == "sim":
+            if not self.cfg["server"].get("test_controls", False):
+                return {"ok": False, "error": "test controls are off on this robot (server.test_controls: false)"}
             if "offline" in msg:
                 with sh.lock: sh.force_offline = bool(msg["offline"])
                 self.bus.publish("net", {"online": sh.online()})
             return {"ok": True}
-        if t == "sensor" and self.cfg["hw"]["distance"] == "sliders":
+        if t == "sensor":
+            if not self.cfg["server"].get("test_controls", False) or self.cfg["hw"]["distance"] != "sliders":
+                return {"ok": False, "error": "sensor sliders only work with test controls on and hw.distance: sliders"}
             i = int(msg["i"])
             with sh.lock:
                 if "value" in msg: sh.slider_values[i] = float(msg["value"])
@@ -279,10 +286,21 @@ class Runtime:
                             "link_timeout": self.cfg["safety"]["link_timeout_manual_s"] if sh.mode == Mode.MANUAL else self.cfg["safety"]["link_timeout_auto_s"]},
                 "sliders": {"values": list(sh.slider_values), "valid": list(sh.slider_valid)},
             }
-        st["survivors"] = [{"id": s.id, "category": s.triage.category if s.triage else None, "sightings": s.sightings,
-                            "last_seen": s.last_seen, "x": s.pose.x_cm, "y": s.pose.y_cm, "u": s.pose.uncertainty_cm,
-                            "snapshot": s.best_snapshot, "messages": len(s.chat)} for s in self.registry.all()]
+        st["survivors"] = self.survivor_rows()
         return st
+
+    def survivor_rows(self, max_age_s: float = 0.5) -> list[dict]:
+        """Cached survivor summaries (KI-08): rebuilt at most every 0.5 s, or at once after a survivor/chat/triage event."""
+        now = time.monotonic()
+        seq = self._bus_seq_of(("survivor", "chat", "triage"))
+        if self._surv_cache is None or seq != self._surv_seq or now - self._surv_at >= max_age_s:
+            self._surv_cache = self.registry.summaries(); self._surv_at = now; self._surv_seq = seq
+        return self._surv_cache
+
+    def _bus_seq_of(self, topics) -> int:
+        for ev in reversed(self.bus.recent):
+            if ev["topic"] in topics: return ev["seq"]
+        return 0
 
     def hello(self) -> dict:
         return {"profile": self.cfg["profile"], "test_controls": self.cfg["server"].get("test_controls", False),

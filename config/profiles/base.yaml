@@ -1,5 +1,5 @@
 # Defaults for every profile. Other profiles only override what they change.
-# Any value can be overridden on the command line:  python -m scoutbot --profile mac --set hw.distance=random
+# Any value can be overridden on the command line:  python -m scoutbot --profile laptop --set hw.distance=random
 
 hw:
   camera: opencv            # opencv | folder | synthetic
@@ -64,7 +64,7 @@ perception:
     max_age_s: 1.0
 
 survivors:
-  merge_cm: 100
+  merge_cm: 85              # base merge radius (cm); 85 = best in the sim sweep (docs/scoutbot/station.md)
   bearing_deg: 25
   dist_cm: {near: 70, mid: 200, far: 400}
   max_snapshots: 5
@@ -75,7 +75,8 @@ talk:
   gemini: {timeout_s: 8}
   ollama: {url: "http://localhost:11434", model: "qwen2.5:3b", timeout_s: 20, keep_alive: "30m"}
   breaker: {fail_threshold: 3, open_s: 30}
-  history_messages: 12
+  history_messages: 12       # maximum chat lines included in each model request
+  prompt_version: v2         # reply_v2.txt and triage_v2.txt, with v1 fallback
 
 voice:
   provider: elevenlabs      # elevenlabs | local | fake
@@ -84,7 +85,7 @@ voice:
   dedupe_s: 10
 
 sync:
-  sinks: [mongo, tiger]     # any of: mongo, tiger   (empty list = local only)
+  sinks: auto               # auto enables configured MongoDB and Tiger URLs; [] stays local only
   interval_s: 3
   backoff_max_s: 60
   telemetry_hz: 1
@@ -97,7 +98,7 @@ net:
 sim:
   world: room_basic
   noise: 0.05
-  fake_people: true
+  fake_people: true        # false: the sim camera sees nobody (tests the no-person paths)
 
 server:
   host: 127.0.0.1

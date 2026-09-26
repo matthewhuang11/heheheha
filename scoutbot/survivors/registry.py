@@ -28,7 +28,7 @@ class Registry:
 
     def _load(self):
         if not self.path.exists(): return
-        for line in self.path.read_text().splitlines():
+        for line in self.path.read_text(encoding="utf-8").splitlines():
             try: s = Survivor.model_validate_json(line)
             except Exception: continue
             self.items[s.id] = s; self._w[s.id] = max(1.0, s.sightings); self._odo_seen[s.id] = 0.0
@@ -37,6 +37,13 @@ class Registry:
 
     def all(self) -> list[Survivor]:
         with self.lock: return [s.model_copy(deep=True) for s in sorted(self.items.values(), key=lambda s: s.id)]
+    def summaries(self) -> list[dict]:
+        """Light rows for the dashboard's 10 Hz state: no chat or snapshot list copies (KI-08)."""
+        with self.lock:
+            return [{"id": s.id, "category": s.triage.category if s.triage else None, "sightings": s.sightings,
+                     "last_seen": s.last_seen, "x": s.pose.x_cm, "y": s.pose.y_cm, "u": s.pose.uncertainty_cm,
+                     "snapshot": s.best_snapshot, "messages": len(s.chat)}
+                    for s in sorted(self.items.values(), key=lambda s: s.id)]
     def get(self, sid: str) -> Survivor | None:
         with self.lock:
             s = self.items.get(sid); return s.model_copy(deep=True) if s else None
@@ -107,7 +114,7 @@ class Registry:
 
     def _persist(self, s: Survivor, now: float, sighting=None):
         s.version += 1; self._saved_at[s.id] = now; self._dirty.discard(s.id)
-        with open(self.path, "a") as f: f.write(s.model_dump_json() + "\n")       # local first
+        with open(self.path, "a", encoding="utf-8") as f: f.write(s.model_dump_json() + "\n")       # local first
         if self.outbox is not None:
             self.outbox.put_survivor(s)
             if sighting is not None:

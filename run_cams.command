@@ -1,8 +1,8 @@
 #!/bin/bash
 # Double-click me: tries camera 0-3, saves cam0.jpg... and reports brightness
 cd "$(dirname "$0")"
-[ -f .venv/bin/activate ] && source .venv/bin/activate
-python3 - 2>&1 <<'PY' | tee cams_output.txt
+PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
+"$PY" - 2>&1 <<'PY' | tee cams_output.txt
 import cv2, time
 for i in range(4):
     cap = cv2.VideoCapture(i)

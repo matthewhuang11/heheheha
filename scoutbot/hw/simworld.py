@@ -40,7 +40,7 @@ class World:
     def __init__(self, cfg: dict, name: str | None = None, seed: int | None = None):
         name = name or cfg["sim"]["world"]
         p = Path(__file__).resolve().parents[2] / "config" / "worlds" / f"{name}.yaml"
-        w = yaml.safe_load(p.read_text()); self.name = name
+        w = yaml.safe_load(p.read_text(encoding="utf-8")); self.name = name
         W, H = w["size"]; self.size = (W, H)
         segs = [(0, 0, W, 0), (W, 0, W, H), (W, H, 0, H), (0, H, 0, 0)]
         segs += [tuple(s) for s in w.get("walls", [])]
@@ -51,8 +51,9 @@ class World:
         st = w.get("start", {"x": W / 2, "y": H / 2, "heading": 0})
         self.x, self.y, self.h = float(st["x"]), float(st["y"]), float(st["heading"])
         self.rng = random.Random(seed); self.noise = cfg["sim"].get("noise", 0.05)
-        m = cfg["motion"]; self.k = m["forward_cm_s"] / max(cfg["speeds"]["FORWARD"][0], 1e-6)
-        self.turn_k = m["turn_deg_s"] / max(abs(cfg["speeds"]["TURN_LEFT"][1]), 1e-6)
+        self.fake_people = bool(cfg["sim"].get("fake_people", True))   # False: the camera "sees" nobody (tests no-person paths)
+        from scoutbot.survivors.pose import Calibration
+        self.cal = Calibration(cfg)            # same per-action speeds as the pose estimate (KI-22)
         # a fixed per-run wheel mismatch makes dead reckoning drift like a real robot
         self.bias = (1 + self.rng.uniform(-self.noise, self.noise), 1 + self.rng.uniform(-self.noise, self.noise))
         self.wheels = (0.0, 0.0); self.lock = threading.RLock(); self.contacts = 0; self._touching = False
@@ -64,8 +65,7 @@ class World:
     def step(self, dt: float):
         with self.lock:
             l, r = self.wheels
-            vl = l * self.k * self.bias[0]; vr = r * self.k * self.bias[1]
-            v = (vl + vr) / 2; w = ((vr - vl) / 2) / self.k * self.turn_k        # deg/s
+            v, w = self.cal.motion(l * self.bias[0], r * self.bias[1])          # cm/s, deg/s
             if v == 0 and w == 0: self._touching = False; return
             nh = self.h + w * dt
             nx = self.x + v * dt * math.cos(math.radians(nh)); ny = self.y + v * dt * math.sin(math.radians(nh))
@@ -116,6 +116,7 @@ class World:
             out.append({"i": i, "x": sx, "y": sy, "dist": dist, "bearing": bearing})
         return sorted(out, key=lambda s: s["dist"])
     def detections(self, now: float) -> list[PersonDetection]:
+        if not self.fake_people: return []
         dets = []
         for s in self.visible_survivors():
             where = "left" if s["bearing"] > 10 else "right" if s["bearing"] < -10 else "center"
