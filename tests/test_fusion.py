@@ -53,3 +53,24 @@ def test_where_off_from_yaml_false_means_off():
     assert cfg["perception"]["yolo"]["where"] is False
     sh = Shared(); PerceptionWorker(cfg, sh).run()
     assert sh.det_status == "off"
+
+def test_perception_worker_keeps_the_detection_frame(monkeypatch):
+    """KI-09: the frame YOLO detected on is stored with the detections, for the survivor snapshot."""
+    import threading, numpy as np
+    from scoutbot import settings
+    from scoutbot.perception import yolo as Y
+    from scoutbot.state import Shared
+    from scoutbot.types import PersonDetection
+    class FakeDet:
+        def __init__(self, y): pass
+        def detect(self, frame, now): return [PersonDetection(source="yolo", where="center", distance="near", confidence=0.9, bbox=(0.4, 0.1, 0.6, 0.9), at=now)]
+    monkeypatch.setattr(Y, "YoloDetector", FakeDet)
+    cfg = settings.load("laptop", ["perception.yolo.confirm=[1,1]"], load_env=False)
+    sh = Shared(); w = Y.PerceptionWorker(cfg, sh)
+    f = np.full((10, 10, 3), 7, np.uint8)
+    with sh.lock: sh.frame = f; sh.frame_seq = 1
+    th = threading.Thread(target=w.run, daemon=True); th.start()
+    import time; t0 = time.time()
+    while getattr(sh, "det_frame", None) is None and time.time() - t0 < 2: time.sleep(0.01)
+    w.stop(); th.join(1)
+    assert sh.det_frame is f and sh.detections
