@@ -6,16 +6,16 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
-## L – Live   (phase 2; updated —, branch agent/live @ —)
-Done (on main):
-Doing now:
-Next:
-Blocked on:
-Needs Matthew: (exact steps + minutes)
+## L – Live   (phase 2; updated 13:55 EDT, branch agent/live @ 79c71bc)
+Done (on main): Initial main health at `3b61ce8` was green: 144 tests; 60 s demo sim 1 survivor, 0 contacts, 0 watchdog trips.
+Doing now: L0-L4 live-service validation and documentation; camera work is deferred until R writes CAMERA FREE.
+Next: Configure and rerun the blocked Ollama, ElevenLabs, MongoDB, and Tiger checks; then merge this L0-L4 milestone and complete camera/phone/fresh-clone acceptance.
+Blocked on: Required live services are not configured: Ollama is refusing connections on localhost:11434; `ELEVENLABS_API_KEY`, `MONGODB_URI`, and `TIGER_DATABASE_URL` are absent. Camera access is denied and R still owns the camera.
+Needs Matthew: (1) In System Settings > Privacy & Security > Camera, allow Terminal (or the terminal app running Scoutbot), then confirm it is allowed; about 1 minute. (2) Add authorized `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, and `TIGER_DATABASE_URL` to `scoutbot-b/.env`, then tell L; about 3 minutes. (3) Open Ollama and run `ollama pull qwen2.5:3b`, then leave it running; about 5-15 minutes. (4) After R writes CAMERA FREE, stand or lie partly behind an obstacle in webcam view and have a same-Wi-Fi phone ready for the laptop/phone run; about 8 minutes.
 Requests for R:
-Edits to files I don't own:
-Contract changes:
-Numbers measured (live):
+Edits to files I don't own: `.gitignore` adds `scoutbot-*/` in 79c71bc (L wiring commit).
+Contract changes: None.
+Numbers measured (live): Gemini key discovery: 19 usable models. Flash-lite scene benchmark: 30 calls, 10/30 schema-valid, p50 0.17 s, p95 1.49 s; a 3-call retry was 3/3. Gemini talk/triage: 6/6 expected categories, triage 0.69-0.97 s, reply 0.51-0.96 s. Local voice completed 8.20 s. No Ollama/ElevenLabs/Mongo/Tiger measurements because they are unconfigured.
 
 ---
 
