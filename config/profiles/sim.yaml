@@ -1,8 +1,8 @@
-# Any computer, simulated room: fake sensors react to fake driving, fake survivors in the room.
-# The camera is still your webcam if one is there (it's shown on the dashboard), but the
-# scene report and person detections come from the simulated room so the whole loop works.
+# Any computer, simulated room: drawn camera view, fake sensors and motors, fake survivors.
+# No webcam or camera permission is required; scene reports and person detections come from
+# the simulated room so the whole loop works.
 hw:
-  camera: opencv
+  camera: synthetic
   distance: simworld
   motors: fake
 scene:
@@ -17,3 +17,5 @@ sim:
 server:
   host: 127.0.0.1
   open_browser: true
+survivors:
+  data_dir: data/sim        # keep simulated survivors out of the real (laptop / robot) records

@@ -26,24 +26,22 @@
 - **Fast state (KI-08):** `Registry.summaries()` + 0.5 s cache, refreshed at once on survivor/chat/triage events.
   `state()` stays under 5 ms with 20 survivors x 50 messages (test).
 - **`sim.fake_people: false`** makes the sim camera see nobody (KI-21).
+- **Simulator camera:** `sim` uses its drawn camera view, so a fresh simulator run needs no webcam or macOS camera permission.
 
 ## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock, 5 seeds x 3 worlds)
 
-People "seen" = came within 2.5 m in view. Records = entries the registry created.
+People "seen" = came within 2.5 m in view. Records = entries the registry created. Simulated
+detections now include a stable per-person track ID; the registry prefers that identity over a
+spatial merge, while real untracked detections retain the existing spatial fallback.
 
-After KI-22 (the pose and the sim use per-action speeds: forward 30, slow 18, back-up 18 cm/s, turns 90 deg/s,
-interpolated during ramps), sweep of `survivors.merge_cm`:
-
-| merge_cm | runs exact (of 15) | extra (duplicate) records | missing (merged) records |
+| Matching | runs exact (of 15) | extra (duplicate) records | missing (merged) records |
 | --- | --- | --- | --- |
-| 60 | 7 | 8 | 0 |
-| 75 | 10 | 3 | 2 |
-| **85 (new default)** | **13** | **0** | **2** |
-| 100 (old default) | 12 | 0 | 3 |
+| Spatial merge only (`merge_cm: 85`) | 13 | 0 | 2 |
+| **Stable sim track ID + spatial fallback** | **15** | **0** | **0** |
 
-Before KI-22, 100 gave 13/15 with 1 duplicate and 1 merge. The only misses left at 85 are demo seeds 2 and 4: the demo
-world's two people stand 155 cm apart and are seen in separate frames, so drift merges them. Headless 20 s demo now
-finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_person` (3 seeds, ~1.7 s).
+The affected demo people stand 155 cm apart and appear in separate frames, so spatial estimates alone
+merged them in seeds 2 and 4. `test_one_survivor_record_per_person` now runs all 15 deterministic
+cases at a fast-forwarded clock (about 13 seconds).
 
 ## Fresh-machine test log
 
@@ -52,7 +50,21 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | 10:33 | Mac (arm64, Python 3.13) | fresh `git clone -b agent/station`, `./start.sh`, pick 1 | dashboard served, but **401** | ~60 s | `.env.example` (old) had `SCOUTBOT_TOKEN=replace_with_...`, copied into `.env` => dashboard locked. **Fixed** in a8386b7: setup blanks placeholders; settings ignores placeholder values in an existing `.env`. |
 | 10:35 | Mac (arm64, Python 3.13) | fresh clone, `./start.command` (menu 1, share y) | **pass**: localhost 200, LAN URL 200, Start auto over WebSocket drives (pose moved 60,200 -> 174,252; 0 contacts) | 58 s clone -> dashboard (pip cache warm, YOLO included) | none |
 | 10:36 | Linux Docker `python:3.10-slim` | fresh clone, `scripts/setup.py --no-yolo`, tests, headless 20, `./start.sh sim --share` | **pass**: 117 tests, headless 0 contacts / 1 survivor, dashboard 200 | setup 29 s | the slim image needs `libgl1 libglib2.0-0` for OpenCV (normal desktops have them). Doctor now explains this if OpenCV won't load. |
+| 12:14 | Mac (arm64, Python 3.13) | station branch, setup then full suite and 60 s demo sim | **pass**: 136 tests; 1 survivor, 0 contacts, 0 watchdog trips | 63 s demo | sim initially opened an unnecessary denied webcam. **Fixed**: `sim` now uses its drawn camera, verified by the regression test. |
 | - | Windows | `start.bat` | written and reviewed, **not run** (no Windows machine yet) | | Ask a teammate with Windows to double-click it and send the screen output. |
+
+## Laptop run with real keys (C8, 11:46)
+
+`python -m scoutbot --profile laptop` with Matthew's `.env` (keys never printed):
+- Camera healthy (auto index), YOLO running at ~67 fps on the M-series Mac, Gemini scene OK (1.5 s per call).
+- **Bug found, fixed (1f673bb, wiring edit in B's `talk` section):** every Gemini talk call failed with
+  `400 INVALID_ARGUMENT: Manually set deadline 8s is too short. Minimum allowed deadline is 10s`. `talk.gemini.timeout_s` 8 -> 12.
+- After the fix: typed "My leg is stuck under a shelf, I can't move it." -> Gemini reply spoken ("I am here and help is on
+  the way...") and triage **IMMEDIATE (trapped)** by `gemini-flash-lite-latest`, within ~5 s.
+- **Bug found, fixed (193398f):** sim survivors were saved in `data/` and reloaded into laptop runs. The sim now uses `data/sim/`.
+- Known: while YOLO is still loading (first ~5 s), Gemini's people report can create a survivor, and YOLO then creates a
+  second one at the same spot. Both go through the same merge rule, so this is rare. Watching it.
+- Ollama not installed on this Mac: the chip is red, as expected.
 
 ## Integration log
 
@@ -60,6 +72,11 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | --- | --- | --- | --- | --- | --- |
 | 11:35 | 58c8c11 | agent/station -> main (0f4ea19, ★ C1-C7) | 121 passed | 1 survivor, 0 contacts, 0 trips | clean |
 | 10:37 | c73ec55 (B milestone) | origin/main into agent/station | 121 passed (3.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Removed `sync.sinks: []` from laptop/sim as B requested. |
+| 12:14 | 8f208ea | C13/C15 station validation before merge | 136 passed (6.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Continue-search and record/replay regression tests pass. A has unmerged camera/YOLO work; B has an unmerged reply-filter fix, so neither was merged directly into Station. |
+| 12:17 | f2f3fc6 | agent/station -> main (C13, C15, simulator camera) | 136 passed (6.3 s) | 1 survivor, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
+| 12:27 | station survivor-track branch | stable simulated survivor identities | 137 passed (15.6 s) | 2 survivors, 0 contacts, 0 watchdog trips | full 5 seeds x 3 worlds sweep: 15/15 exact |
+| 12:29 | 1d0110b | agent/station -> main (survivor identity matching) | 137 passed (15.3 s) | 2 survivors, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
+| 12:37 | 219082b | agent/station -> main (C13 Fuser/gate suppression) | 137 passed (14.9 s) | 2 survivors, 0 contacts, 0 watchdog trips | handled, distinct, and 60 s expiry regressions pass |
 
 ## Known limits
 

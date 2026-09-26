@@ -49,7 +49,7 @@ Put them in `.env` in this folder (setup creates it from `.env.example`). Never 
 
 | Profile | Camera | Distance sensors | Motors | Notes |
 | --- | --- | --- | --- | --- |
-| `sim` | webcam if any (else drawn view) | simulated room | fake (move the sim robot) | no keys needed; worlds: `--set sim.world=demo` / `room_basic` / `rubble` |
+| `sim` | drawn view (no webcam or permission needed) | simulated room | fake (move the sim robot) | no keys needed; worlds: `--set sim.world=demo` / `room_basic` / `rubble` |
 | `laptop` (alias `mac`) | this computer's webcam | dashboard sliders | fake | Gemini if the key is set |
 | `pi` | Pi camera / USB | HC-SR04 (or ToF) | L298N | listens on the network, test controls off |
 
