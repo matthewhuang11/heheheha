@@ -39,7 +39,7 @@ def resolve_profile(profile: str) -> str:
 def _read_yaml(p: Path) -> dict:
     return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
 
-ENV_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_TALK_MODEL", "ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID",
+ENV_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_TALK_MODEL", "XAI_API_KEY", "ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID",
             "MONGODB_URI", "TIGER_DATABASE_URL", "CAMERA_INDEX", "SCOUTBOT_TOKEN")
 PLACEHOLDER_HINTS = ("your_", "replace_with", "user:password@", "changeme")
 
@@ -77,5 +77,7 @@ def load(profile: str = DEFAULT_PROFILE, overrides: list[str] | None = None, loa
         if "=" not in item: raise SystemExit(f"--set needs key=value, got '{item}'")
         k, v = item.split("=", 1)
         set_path(cfg, k.strip(), yaml.safe_load(v))
+    if cfg.get("scene", {}).get("provider") not in ("gemini", "xai", "fake", "sim"):
+        raise SystemExit("scene.provider must be gemini, xai, fake, or sim")
     cfg["profile"] = profile
     return cfg

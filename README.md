@@ -38,7 +38,8 @@ Put them in `.env` in this folder (setup creates it from `.env.example`). Never 
 
 | Key | Turns on | Without it | Get one |
 | --- | --- | --- | --- |
-| `GEMINI_API_KEY` | Gemini scene descriptions, replies and triage | driving uses the sensors only; replies from Ollama or canned text | <https://aistudio.google.com/apikey> |
+| `GEMINI_API_KEY` | Gemini replies and triage | replies fall back to Ollama or canned text | <https://aistudio.google.com/apikey> |
+| `XAI_API_KEY` | Grok scene descriptions when `scene.provider=xai` | driving uses sensors and YOLO; Gemini talk/triage are unchanged | <https://console.x.ai/> |
 | `ELEVENLABS_API_KEY` (+ `ELEVENLABS_VOICE_ID`) | natural voice | the computer's built-in voice | <https://elevenlabs.io/> |
 | `MONGODB_URI` | survivor records synced to MongoDB | saved on this computer only (`data/`) | <https://www.mongodb.com/atlas> |
 | `TIGER_DATABASE_URL` | sightings time series in Tiger Data | saved on this computer only | <https://www.tigerdata.com/> |
@@ -50,11 +51,19 @@ Put them in `.env` in this folder (setup creates it from `.env.example`). Never 
 | Profile | Camera | Distance sensors | Motors | Notes |
 | --- | --- | --- | --- | --- |
 | `sim` | drawn view (no webcam or permission needed) | simulated room | fake (move the sim robot) | no keys needed; worlds: `--set sim.world=demo` / `room_basic` / `rubble` |
-| `laptop` (alias `mac`) | this computer's webcam | dashboard sliders | fake | Gemini if the key is set |
+| `laptop` (alias `mac`) | this computer's webcam | dashboard sliders | fake | Grok scene vision if `XAI_API_KEY` is set; Gemini talk/triage |
 | `pi` | Pi camera / USB | HC-SR04 (or ToF) | L298N | listens on the network, test controls off |
 
 Any setting can be changed for one run: `python -m scoutbot --profile laptop --set server.port=8001`.
 Settings live in `config/profiles/*.yaml`.
+
+### Grok scene vision
+
+The laptop profile selects xAI. Add `XAI_API_KEY` to `.env`, or select it
+explicitly with `python -m scoutbot --profile laptop --set scene.provider=xai`.
+The default `grok-4.3-latest` uses xAI's OpenAI-compatible HTTPS API with JSON
+output, bounded retries, and a 15-second timeout. Gemini remains the provider for
+survivor replies and triage (`GEMINI_TALK_MODEL` / `GEMINI_MODEL`).
 
 ## Open the dashboard on a phone or another laptop
 

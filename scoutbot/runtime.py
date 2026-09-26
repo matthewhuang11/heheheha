@@ -61,7 +61,9 @@ class Runtime:
         self._last_log = 0.0; self._last_tel = 0.0; self._det_seen = None; self._scene_seen = None
         self._surv_cache = None; self._surv_at = 0.0; self._surv_seq = 0
         self.handled: dict[str, float] = {}      # survivor id -> monotonic expiry of "Continue search" (KI-38)
-        with self.shared.lock: self.shared.services["gemini_scene"] = cfg["scene"]["provider"]
+        with self.shared.lock:
+            self.shared.services["scene"] = cfg["scene"]["provider"]
+            self.shared.services["gemini_scene"] = cfg["scene"]["provider"]  # legacy dashboard clients
         if start_workers: self.start()
 
     # ---------------- workers ----------------
@@ -119,6 +121,18 @@ class Runtime:
         describe = None
         if prov == "gemini":
             from robot.vlm import describe
+        elif prov == "xai":
+            from scoutbot.perception.xai_scene import XaiSceneProvider
+            try:
+                describe = XaiSceneProvider(self.cfg).describe
+            except Exception:
+                # Do not expose potentially user-supplied configuration in the
+                # dashboard, terminal, or model telemetry.
+                def describe(_frame):
+                    raise RuntimeError("xAI scene provider configuration is invalid")
+        elif prov not in ("sim", "fake"):
+            def describe(_frame):
+                raise RuntimeError("scene provider is invalid")
         while not self._stop.is_set():
             t0 = time.monotonic()
             try:
@@ -127,7 +141,7 @@ class Runtime:
                 else:
                     with self.shared.lock: frame = self.shared.frame; healthy = self.shared.cam_health.get("healthy", False)
                     if not self.shared.online() or frame is None or not healthy:
-                        self._stop.wait(0.5); continue          # offline or no usable frame: no Gemini call
+                        self._stop.wait(0.5); continue          # offline or no usable frame: no cloud scene call
                     rep = describe(frame.copy())
                 lat = time.monotonic() - t0
                 with self.shared.lock:
@@ -136,7 +150,7 @@ class Runtime:
             except Exception as e:
                 with self.shared.lock:
                     self.shared.vlm_failures += 1; self.shared.vlm_error = f"{type(e).__name__}: {e}"[:300]
-                print("[scene] Gemini error:", self.shared.vlm_error, flush=True)
+                print("[scene] provider error:", self.shared.vlm_error, flush=True)
             self._stop.wait(max(0.2, interval - (time.monotonic() - t0)))
 
     # ---------------- control ----------------
@@ -241,7 +255,9 @@ class Runtime:
     def _scene_person_position(self, scene, now: float) -> tuple[float, float] | None:
         if scene.people.distance not in ("near", "mid", "far"): return None
         where = scene.people.where if scene.people.where in ("left", "center", "right") else "center"
-        return self._detection_position(PersonDetection(source="gemini", where=where, distance=scene.people.distance, confidence=1.0, at=now))
+        source = self.cfg["scene"]["provider"]
+        source = source if source in ("gemini", "xai", "sim") else "gemini"
+        return self._detection_position(PersonDetection(source=source, where=where, distance=scene.people.distance, confidence=1.0, at=now))
 
     # ---------------- survivors ----------------
     def survivor_loop(self):
@@ -261,7 +277,9 @@ class Runtime:
             if not yolo_live and scene is not None and scene_at != self._scene_seen:
                 self._scene_seen = scene_at
                 if scene.people.visible:
-                    new_dets = [PersonDetection(source="gemini", where=scene.people.where, distance=scene.people.distance, confidence=scene.confidence, at=scene_at)]
+                    source = self.cfg["scene"]["provider"]
+                    source = source if source in ("gemini", "xai", "sim") else "gemini"
+                    new_dets = [PersonDetection(source=source, where=scene.people.where, distance=scene.people.distance, confidence=scene.confidence, at=scene_at)]
             used: set = set()                                 # two people in one frame are two survivors
             for d in new_dets:
                 s, new = self.registry.sighting(d, self.pose.pose(), self.pose.odometer, frame, exclude=used)
