@@ -3,3 +3,11 @@ google-genai
 pydantic
 python-dotenv
 pytest
+fastapi
+uvicorn[standard]
+pyyaml
+httpx
+ultralytics
+pymongo
+psycopg[binary]
+websockets
