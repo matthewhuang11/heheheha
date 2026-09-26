@@ -1,3 +1,11 @@
 __pycache__/
 *.py[cod]
 logs/
+.env
+.venv/
+gemini_check_output.txt
+cam*.jpg
+cams_output.txt
+sim_output.txt
+dataset/
+eval_*_output.txt
