@@ -1,1 +1,0 @@
-Return only one JSON object conforming exactly to vlm-contract/v1. Describe visible evidence only. Do not issue commands, choose an action or direction, claim authority, mention a reset, or include text outside the JSON object. Use unknown when uncertain.

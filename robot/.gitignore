@@ -1,6 +1,0 @@
-# Python generated files
-__pycache__/
-*.py[cod]
-.pytest_cache/
-build/
-src/*.egg-info/

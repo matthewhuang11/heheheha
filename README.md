@@ -1,7 +1,16 @@
-# Disaster Response Robot V1 Specification Set
+# Robot Brain Laptop Harness
 
-This repository contains the source V1 concept specification and its controlled research-test baseline: requirements, ODD constraints, safety case and hazard log, interfaces, verification plan, traceability matrix, and operating runbooks.
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python demo.py
+python demo.py --fake-vlm
+python demo.py --image path.jpg
+python demo.py --once
+pytest -q
+```
 
-**Scope:** research testing only in the documented, supervised ODD. It is not a rescue, disaster-response, public-use, production, or certified system. The source narrative in [`disaster-response-robot-v1-spec.md`](disaster-response-robot-v1-spec.md) is preserved; where its exploratory choices differ, the conservative baseline in [`docs/requirements/v1-requirements.md`](docs/requirements/v1-requirements.md) and [`docs/requirements/odds-and-constraints.md`](docs/requirements/odds-and-constraints.md) governs controlled testing.
+On macOS, grant **Camera** permission to the terminal or IDE running `demo.py`.
 
-Start with the [requirements](docs/requirements/v1-requirements.md), [ODD](docs/requirements/odds-and-constraints.md), [safety case](docs/safety/safety-case-v1.md), and [verification plan](docs/verification/v1-verification-plan.md).
+Keys: `1`/`2`/`3` select left/center/right, `=` and `-` change it by 10 cm, `0` toggles no echo, `r` resets, `v` toggles VLM offline, space forces a VLM call, `4`–`9` select canned reports in `--fake-vlm`, and `q` quits. Decisions append to `logs/run.jsonl`.
