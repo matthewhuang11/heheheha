@@ -47,6 +47,51 @@ Prerequisites needing user action: a Vultr account and approved paid VM, a DNS h
 
 The service exposes only `GET /healthz` and authenticated `POST /v1/ingest`. It uses constant-time bearer comparison, strict Pydantic request models, a 1 MB request limit, maximum 500 items per request, no API docs endpoint, and no Mongo credential on the clients. Run it as the non-root image user; Caddy is the only public-facing container.
 
+### No-Docker deployment
+
+To run directly under `systemd` instead, log into the VM console as the limited sudo user and run the following. Enter secret values only in the server console; do not paste them into chat.
+
+```sh
+sudo apt-get update
+sudo apt-get install -y git python3-venv caddy
+git clone --branch agent/robot https://github.com/matthewhuang11/heheheha.git ~/scoutbot
+cd ~/scoutbot
+python3 -m venv .venv
+.venv/bin/pip install fastapi 'uvicorn[standard]' pymongo pydantic
+sudo install -m 600 /dev/null /etc/scoutbot-ingest.env
+sudo nano /etc/scoutbot-ingest.env
+```
+
+The environment file contains the names `INGEST_TOKEN` and `MONGODB_URI`. Then install and start the non-root service:
+
+```sh
+DEPLOY_USER="$(whoami)"
+sudo tee /etc/systemd/system/scoutbot-ingest.service >/dev/null <<EOF
+[Unit]
+Description=Scoutbot Mongo ingest API
+After=network-online.target
+Wants=network-online.target
+[Service]
+User=${DEPLOY_USER}
+WorkingDirectory=/home/${DEPLOY_USER}/scoutbot
+EnvironmentFile=/etc/scoutbot-ingest.env
+ExecStart=/home/${DEPLOY_USER}/scoutbot/.venv/bin/uvicorn scoutbot.ingest.app:create_app --factory --host 127.0.0.1 --port 8080
+Restart=always
+RestartSec=3
+[Install]
+WantedBy=multi-user.target
+EOF
+sed 's/{\$INGEST_HOSTNAME}/downbeatfoil6588.duckdns.org/' deploy/vultr/Caddyfile.systemd | sudo tee /etc/caddy/Caddyfile >/dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now scoutbot-ingest caddy
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw --force enable
+```
+
+Verify with `sudo systemctl status scoutbot-ingest caddy --no-pager` and `curl -fsS https://downbeatfoil6588.duckdns.org/healthz`.
+
 ## Test and acceptance commands
 
 ```sh
