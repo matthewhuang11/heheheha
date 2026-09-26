@@ -251,6 +251,8 @@ class Runtime:
                 dets, det_at = list(self.shared.detections), self.shared.det_at
                 scene, scene_at = self.shared.scene, self.shared.scene_at
                 frame = None if self.shared.frame is None else self.shared.frame.copy()
+                df = getattr(self.shared, "det_frame", None)                          # [robot] wiring: KI-09
+                if df is not None and dets: frame = df.copy()                           # snapshot = the frame YOLO saw
                 yolo = self.shared.det_status
             new_dets = []
             if dets and det_at != self._det_seen: self._det_seen = det_at; new_dets = dets
