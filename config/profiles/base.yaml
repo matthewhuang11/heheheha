@@ -72,7 +72,7 @@ survivors:
 
 talk:
   enabled: true
-  gemini: {timeout_s: 8}
+  gemini: {timeout_s: 12}    # Gemini API rejects deadlines under 10 s (400 INVALID_ARGUMENT)
   ollama: {url: "http://localhost:11434", model: "qwen2.5:3b", timeout_s: 20, keep_alive: "30m"}
   breaker: {fail_threshold: 3, open_s: 30}
   history_messages: 12       # maximum chat lines included in each model request

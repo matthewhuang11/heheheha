@@ -54,6 +54,19 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | 10:36 | Linux Docker `python:3.10-slim` | fresh clone, `scripts/setup.py --no-yolo`, tests, headless 20, `./start.sh sim --share` | **pass**: 117 tests, headless 0 contacts / 1 survivor, dashboard 200 | setup 29 s | the slim image needs `libgl1 libglib2.0-0` for OpenCV (normal desktops have them). Doctor now explains this if OpenCV won't load. |
 | - | Windows | `start.bat` | written and reviewed, **not run** (no Windows machine yet) | | Ask a teammate with Windows to double-click it and send the screen output. |
 
+## Laptop run with real keys (C8, 11:46)
+
+`python -m scoutbot --profile laptop` with Matthew's `.env` (keys never printed):
+- Camera healthy (auto index), YOLO running at ~67 fps on the M-series Mac, Gemini scene OK (1.5 s per call).
+- **Bug found, fixed (1f673bb, wiring edit in B's `talk` section):** every Gemini talk call failed with
+  `400 INVALID_ARGUMENT: Manually set deadline 8s is too short. Minimum allowed deadline is 10s`. `talk.gemini.timeout_s` 8 -> 12.
+- After the fix: typed "My leg is stuck under a shelf, I can't move it." -> Gemini reply spoken ("I am here and help is on
+  the way...") and triage **IMMEDIATE (trapped)** by `gemini-flash-lite-latest`, within ~5 s.
+- **Bug found, fixed (193398f):** sim survivors were saved in `data/` and reloaded into laptop runs. The sim now uses `data/sim/`.
+- Known: while YOLO is still loading (first ~5 s), Gemini's people report can create a survivor, and YOLO then creates a
+  second one at the same spot. Both go through the same merge rule, so this is rare. Watching it.
+- Ollama not installed on this Mac: the chip is red, as expected.
+
 ## Integration log
 
 | Time | main before | Merged in | Tests | Headless 20 s (demo) | Notes |
