@@ -143,6 +143,7 @@ Browser → robot (any message also counts as a heartbeat; the page sends `heart
 {"type":"retriage","survivor_id":"S-0001"}
 {"type":"sim","offline":true|false}
 {"type":"sensor","i":0|1|2,"value":<cm>,"valid":<bool>}    // sliders profile only
+{"type":"handled","survivor_id":"S-0001"}                  // "Continue search": ignore this survivor for survivors.handled_s (60 s); event topic "handled"
 {"type":"ping","t":<float>}                                // reply {"type":"reply","for":"ping","ok":true,"t":<same>} (round-trip time)
 ```
 `sim` and `sensor` are refused (`reply ok:false`) unless `server.test_controls` is true (KI-07).

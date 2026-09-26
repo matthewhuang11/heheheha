@@ -69,6 +69,7 @@ survivors:
   dist_cm: {near: 70, mid: 200, far: 400}
   max_snapshots: 5
   data_dir: data
+  handled_s: 60              # 'Continue search': ignore a handled survivor for this long (KI-38)
 
 talk:
   enabled: true
