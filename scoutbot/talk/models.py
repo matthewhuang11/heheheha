@@ -7,8 +7,13 @@ import httpx
 from scoutbot.talk.triage import FACTS_SCHEMA, TriageFacts, parse_facts
 
 PROMPTS = Path(__file__).resolve().parent / "prompts"
-TRIAGE_PROMPT = (PROMPTS / "triage_v1.txt").read_text() + json.dumps(FACTS_SCHEMA, separators=(",", ":"))
-REPLY_PROMPT = (PROMPTS / "reply_v1.txt").read_text()
+
+def _prompt(kind: str, version: str = "v1") -> str:
+    """Read a bundled prompt, falling back safely to the proven v1 wording."""
+    candidate = PROMPTS / f"{kind}_{version}.txt"
+    if not candidate.is_file():
+        candidate = PROMPTS / f"{kind}_v1.txt"
+    return candidate.read_text(encoding="utf-8")
 
 GREETING = "Hello, I'm a rescue robot. Help is being called. Can you hear me?"
 CANNED_REPLIES = [
@@ -26,13 +31,14 @@ def transcript(chat: list, limit: int = 12) -> str:
 
 class GeminiTalk:
     name = "gemini"
-    def __init__(self, timeout_s: float = 8):
+    def __init__(self, timeout_s: float = 8, history_messages: int = 12, prompt_version: str = "v1"):
         key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
         if not key: raise RuntimeError("GEMINI_API_KEY is missing (check .env)")
         from google import genai
         from google.genai import types
-        self.types = types; self.model = os.getenv("GEMINI_TALK_MODEL") or os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+        self.types = types; self.model = os.getenv("GEMINI_TALK_MODEL", "").strip().strip('"').strip("'") or os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip().strip('"').strip("'") or "gemini-flash-lite-latest"
         self.client = genai.Client(api_key=key, http_options=types.HttpOptions(timeout=int(timeout_s * 1000)))
+        self.history_messages = history_messages; self.prompt_version = prompt_version
     @property
     def label(self): return self.model
     def _gen(self, parts, system=None, json_mode=False):
@@ -40,18 +46,18 @@ class GeminiTalk:
                                                response_mime_type="application/json" if json_mode else None)
         return self.client.models.generate_content(model=self.model, contents=parts, config=cfg).text or ""
     def triage_facts(self, chat, context: str, snapshot: bytes | None) -> TriageFacts:
-        parts = [TRIAGE_PROMPT, f"Scene notes: {context}\nConversation so far:\n{transcript(chat)}"]
+        parts = [_prompt("triage", self.prompt_version) + json.dumps(FACTS_SCHEMA, separators=(",", ":")), f"Scene notes: {context}\nConversation so far:\n{transcript(chat, self.history_messages)}"]
         if snapshot: parts.append(self.types.Part.from_bytes(data=snapshot, mime_type="image/jpeg"))
         return parse_facts(self._gen(parts, json_mode=True))
     def reply(self, chat, context: str) -> str:
-        text = self._gen([f"Scene notes: {context}\nConversation so far:\n{transcript(chat)}\nWrite the robot's next line."], system=REPLY_PROMPT)
+        text = self._gen([f"Scene notes: {context}\nConversation so far:\n{transcript(chat, self.history_messages)}\nWrite the robot's next line."], system=_prompt("reply", self.prompt_version))
         return clean_reply(text)
 
 class OllamaTalk:
     name = "ollama"
-    def __init__(self, url: str, model: str, timeout_s: float = 20, keep_alive: str = "30m"):
+    def __init__(self, url: str, model: str, timeout_s: float = 20, keep_alive: str = "30m", history_messages: int = 12, prompt_version: str = "v1"):
         self.url = url.rstrip("/"); self.model = model; self.timeout = timeout_s; self.keep_alive = keep_alive
-        self.http = httpx.Client(timeout=timeout_s)
+        self.http = httpx.Client(timeout=timeout_s); self.history_messages = history_messages; self.prompt_version = prompt_version
     @property
     def label(self): return f"ollama:{self.model}"
     def healthy(self) -> bool:
@@ -63,11 +69,11 @@ class OllamaTalk:
         r = self.http.post(self.url + "/api/chat", json=body); r.raise_for_status()
         return r.json()["message"]["content"]
     def triage_facts(self, chat, context: str, snapshot: bytes | None = None) -> TriageFacts:
-        msg = f"{TRIAGE_PROMPT}\n\nScene notes (from the robot's camera, as text): {context}\nConversation so far:\n{transcript(chat)}"
+        msg = f"{_prompt('triage', self.prompt_version)}{json.dumps(FACTS_SCHEMA, separators=(',', ':'))}\n\nScene notes (from the robot's camera, as text): {context}\nConversation so far:\n{transcript(chat, self.history_messages)}"
         return parse_facts(self._chat([{"role": "user", "content": msg}], fmt=FACTS_SCHEMA))
     def reply(self, chat, context: str) -> str:
-        return clean_reply(self._chat([{"role": "system", "content": REPLY_PROMPT},
-                                       {"role": "user", "content": f"Scene notes: {context}\nConversation so far:\n{transcript(chat)}\nWrite the robot's next line."}]))
+        return clean_reply(self._chat([{"role": "system", "content": _prompt("reply", self.prompt_version)},
+                                       {"role": "user", "content": f"Scene notes: {context}\nConversation so far:\n{transcript(chat, self.history_messages)}\nWrite the robot's next line."}]))
     def warm_up(self):
         try: self._chat([{"role": "user", "content": "Say OK."}])
         except Exception: pass

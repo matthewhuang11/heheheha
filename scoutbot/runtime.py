@@ -44,8 +44,9 @@ class Runtime:
         self.pose = DeadReckoning(cfg, start=self.world.pose() if self.world else None)
         self.map = MapBuilder()
         data_dir = Path(cfg["survivors"].get("data_dir", "data")); data_dir.mkdir(parents=True, exist_ok=True)
+        from scoutbot.sync import resolve_sinks
         from scoutbot.sync.outbox import Outbox, SyncWorker
-        self.outbox = Outbox(data_dir, cfg["sync"].get("sinks", []))
+        self.outbox = Outbox(data_dir, resolve_sinks(cfg))
         self.registry = Registry(cfg, self.bus, self.outbox, data_dir)
         from scoutbot.voice.speaker import Speaker
         self.voice = Speaker(cfg, self.shared)
