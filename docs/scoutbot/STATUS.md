@@ -2,7 +2,7 @@
 
 Rules: edit ONLY your own section; update on every merge to main, when blocked, when you change a contract, and at least hourly. Read the other sections every time you merge `origin/main`. Format and rules: `docs/scoutbot/parallel/01-shared-rules.md` section 4.
 
-**main health:** green (C checks 11:44: 132 tests, headless demo sim OK). C updates this line after each integration pass.
+**main health:** green (C checks 12:17: 136 tests, 20 s headless demo sim: 1 survivor, 0 contacts, 0 watchdog trips).
 
 ---
 
@@ -36,17 +36,17 @@ Known issues fixed (KI-xx): KI-03, KI-10, KI-12, KI-20, KI-35, KI-36, KI-43.
 
 ---
 
-## C – Station   (updated 12:14 EDT, branch agent/station @ 95effb3)
-Done (on main): C1-C7 one-step setup (0f4ea19); C9 command safety + fast state; C10 dashboard polish; C11 survivors/pose (merging now).
-Done (on my branch, not merged yet): C13 / KI-38 continue-search (95effb3); C15 record/replay (9d2edd0, b619502); simulator camera no longer opens a webcam (pending commit).
-Doing now: validate and merge C13/C15 plus the simulator integration fix to main.
+## C – Station   (updated 12:17 EDT, branch agent/station @ f2f3fc6)
+Done (on main): C1-C7 one-step setup (0f4ea19); C9 command safety + fast state; C10 dashboard polish; C11 survivors/pose; C13 / KI-38 continue-search (95effb3); C15 record/replay (9d2edd0, b619502); simulator uses a drawn camera (e6b763f).
+Done (on my branch, not merged yet): -
+Doing now: wait for A and B to merge their available work, then run the required integration pass.
 Next: integration pass after A and B merge their available branch work to main.
 Blocked on: a Windows machine to run start.bat for real (written + reviewed). Anyone with Windows: double-click start.bat in a fresh clone and paste the output here. A's camera/YOLO commits and B's reply-filter commit are available only on their branches; per workflow they must merge to main before Station integrates them.
 Requests for A: (1) please merge your branch to main soon: A1 motor_check and A2 camera auto-detect are only on agent/robot. (2) add requirements-yolo.txt (setup.py installs it if present, else `pip install ultralytics`). (3) KI-22 is DONE on my side: pose.py + simworld use motion.forward_cm_s / slow_cm_s / backup_cm_s / turn_deg_s, interpolated in ramps. Just put your measured numbers in pi.yaml `motion:`. (4) KI-38 continue-search: DONE on the station side without touching fusion/gate: `Runtime.unhandled(dets, now)` drops detections (and Gemini's person) that fall on a survivor the responder marked handled, for 60 s, before fresh_person/Fuser. The gate and sensors are unchanged. Tested in the sim: rule-5 hold released, robot continues, 0 contacts. If you'd rather own this inside Fuser, say so and I'll switch.
 Requests for B: FYI wiring edit 1f673bb in your `talk` section: `talk.gemini.timeout_s` 8 -> 12, because the Gemini API rejects deadlines under 10 s (every talk call was failing with real keys). Please keep it >= 10 in cloud code/tests. (Done earlier: removed sync.sinks [] from laptop/sim.)
 Edits to files I don't own: 1f673bb base.yaml talk.gemini.timeout_s 8 -> 12 (B's section, 1 line).
 Contract changes: new WebSocket command `ping` -> reply `{for: "ping", ok, t}` (RTT); `sim`/`sensor` refused unless server.test_controls (03-contracts.md section 8 updated). `--profile mac` = alias of `laptop`. `survivors.merge_cm` 100 -> 85. Dashboard chips: "Gemini scene" (from vlm.* + services.gemini_scene) and "Gemini talk" (services.gemini).
-Integration passes (time, commits, result): 10:37 origin/main c73ec55 (B): green. 11:35 ★ agent/station -> main 0f4ea19: 121 tests, headless OK. 11:44: 132 tests, headless demo 2 survivors / 0 contacts. 12:14: 136 tests passed; 60 s headless demo sim passed (1 survivor, 0 contacts, 0 watchdog trips); C13 continue-search and C15 record/replay regression tests passed. Sim now uses synthetic video, avoiding a webcam-permission warning.
+Integration passes (time, commits, result): 10:37 origin/main c73ec55 (B): green. 11:35 ★ agent/station -> main 0f4ea19: 121 tests, headless OK. 11:44: 132 tests, headless demo 2 survivors / 0 contacts. 12:14: 136 tests passed; 60 s headless demo sim passed (1 survivor, 0 contacts, 0 watchdog trips); C13 continue-search and C15 record/replay regression tests passed. Sim now uses synthetic video, avoiding a webcam-permission warning. 12:17 ★ f2f3fc6: 136 tests and headless 20 s demo passed; pushed to origin/main.
 Known issues fixed (KI-xx): KI-02, 07, 08, 21, 22, 30, 31, 32, 34 (my files), 37, 38, 42, 44.
 
 ---
