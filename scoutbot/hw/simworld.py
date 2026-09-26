@@ -40,7 +40,7 @@ class World:
     def __init__(self, cfg: dict, name: str | None = None, seed: int | None = None):
         name = name or cfg["sim"]["world"]
         p = Path(__file__).resolve().parents[2] / "config" / "worlds" / f"{name}.yaml"
-        w = yaml.safe_load(p.read_text()); self.name = name
+        w = yaml.safe_load(p.read_text(encoding="utf-8")); self.name = name
         W, H = w["size"]; self.size = (W, H)
         segs = [(0, 0, W, 0), (W, 0, W, H), (W, H, 0, H), (0, H, 0, 0)]
         segs += [tuple(s) for s in w.get("walls", [])]

@@ -1,5 +1,5 @@
 # Defaults for every profile. Other profiles only override what they change.
-# Any value can be overridden on the command line:  python -m scoutbot --profile mac --set hw.distance=random
+# Any value can be overridden on the command line:  python -m scoutbot --profile laptop --set hw.distance=random
 
 hw:
   camera: opencv            # opencv | folder | synthetic

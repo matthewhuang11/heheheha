@@ -1,4 +1,5 @@
-# Everything on your Mac: laptop webcam + fake distance sensors (dashboard sliders) + fake motors.
+# Any laptop (Mac, Windows, Linux): its webcam + fake distance sliders + fake motors.
+# ("--profile mac" is an alias for this profile.)
 hw:
   camera: opencv
   distance: sliders
