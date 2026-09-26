@@ -46,3 +46,8 @@ def test_survivor_cache_refreshes_on_new_event(tmp_path, monkeypatch):
     rt.registry.sighting(PersonDetection(source="sim", where="center", distance="near", confidence=0.9, at=0), Pose(), 0.0, None)
     assert len(rt.state()["survivors"]) == 1          # immediately, not after 0.5 s
     rt.stop()
+
+def test_ping_echoes_time(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path); rt = make(tmp_path)
+    assert rt.command({"type": "ping", "t": 12.5}) == {"ok": True, "t": 12.5}
+    rt.stop()

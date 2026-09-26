@@ -143,7 +143,9 @@ Browser → robot (any message also counts as a heartbeat; the page sends `heart
 {"type":"retriage","survivor_id":"S-0001"}
 {"type":"sim","offline":true|false}
 {"type":"sensor","i":0|1|2,"value":<cm>,"valid":<bool>}    // sliders profile only
+{"type":"ping","t":<float>}                                // reply {"type":"reply","for":"ping","ok":true,"t":<same>} (round-trip time)
 ```
+`sim` and `sensor` are refused (`reply ok:false`) unless `server.test_controls` is true (KI-07).
 
 **`state` keys:** `mode, mode_reason, decision{action, rule, reason, notes, stuck}, trace[], final_action, veto, sensors{raw, valid, filtered, age}, scene, scene_age, vlm{failures, latency, error, calls}, detections[], yolo{status, fps}, pose, true_pose, sim_contacts, internet, force_offline, online, services{}, sync{}, camera{healthy, reasons...}, deadman{motor_age, trips, link_age, link_timeout}, sliders{values, valid}, survivors[{id, category, sightings, last_seen, x, y, u, snapshot, messages}]`.
 

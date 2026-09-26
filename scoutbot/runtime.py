@@ -228,6 +228,7 @@ class Runtime:
         t = msg.get("type"); sh = self.shared; now = time.monotonic()
         with sh.lock: sh.link_at = now                      # any message counts as a heartbeat
         if t == "heartbeat": return None
+        if t == "ping": return {"ok": True, "t": msg.get("t")}     # the dashboard measures round-trip time
         if t == "estop": self.modes.estop(); self.motors.stop(); return {"ok": True}
         if t == "mode":
             m = Mode(msg["mode"]); self.modes.request(m, "responder")
