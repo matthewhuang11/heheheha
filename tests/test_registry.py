@@ -17,9 +17,16 @@ def test_new_then_merge(tmp_path):
 
 def test_two_people_in_one_frame_are_two_survivors(tmp_path):
     r = Registry(CFG, data_dir=tmp_path); used = set()
-    a, _ = r.sighting(det("left", "far"), Pose(), 0.0, FRAME, exclude=used); used.add(a.id)
-    b, new = r.sighting(det("center", "far"), Pose(), 0.0, FRAME, exclude=used)
+    a, _ = r.sighting(det("left", "mid"), Pose(), 0.0, FRAME, exclude=used); used.add(a.id)
+    b, new = r.sighting(det("center", "mid"), Pose(), 0.0, FRAME, exclude=used)
     assert new and a.id != b.id
+
+def test_far_sighting_never_creates_but_updates(tmp_path):
+    r = Registry(CFG, data_dir=tmp_path)
+    s, new = r.sighting(det("center", "far"), Pose(), 0.0, FRAME); assert s is None and not new and r.all() == []
+    a, _ = r.sighting(det("center", "mid"), Pose(), 0.0, FRAME)
+    b, new = r.sighting(det("center", "far"), Pose(x_cm=-200), 0.0, FRAME)      # same person, seen from farther back
+    assert b is not None and not new and b.id == a.id and b.sightings == 2
 
 def test_snapshots_capped_and_best_kept(tmp_path):
     r = Registry(CFG, data_dir=tmp_path)

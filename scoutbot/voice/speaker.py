@@ -61,10 +61,12 @@ class Speaker:
         self._stop = threading.Event(); self.spoken: list[tuple[str, str]] = []
     def _status(self, s):
         with self.shared.lock: self.shared.services["voice"] = s
-    def say(self, text: str, priority: int = 0):
-        now = time.monotonic()
-        if now - self.recent.get(text, -1e9) < self.dedupe_s: return
-        self.recent[text] = now
+    def say(self, text: str, priority: int = 0, key: str | None = None):
+        """key: what counts as 'the same sentence' for de-duplication (default: the text). The talk worker passes
+        survivor id + text so two different survivors can both get the same greeting."""
+        now = time.monotonic(); k = key or text
+        if now - self.recent.get(k, -1e9) < self.dedupe_s: return
+        self.recent[k] = now
         self.q.put((-priority, next(self.count), text))
     def _speak_one(self, text: str):
         use_primary = self.primary is not None and (self.primary.name != "elevenlabs" or self.shared.online())

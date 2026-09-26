@@ -48,8 +48,8 @@ class TalkWorker:
         self.bus.publish("chat", msg.model_dump())
         return msg
 
-    def _speak(self, text, priority=0):
-        if self.voice is not None: self.voice.say(text, priority)
+    def _speak(self, text, priority=0, sid=""):
+        if self.voice is not None: self.voice.say(text, priority, key=f"{sid}:{text}")
 
     def _snapshot(self, s) -> bytes | None:
         if not s or not s.best_snapshot: return None
@@ -67,13 +67,13 @@ class TalkWorker:
         sid, kind = job["sid"], job["kind"]
         if self.registry.get(sid) is None: return
         if kind == "new_survivor":
-            self._add(sid, "robot", GREETING, "canned"); self._speak(GREETING, priority=1); self._retriage(sid)
+            self._add(sid, "robot", GREETING, "canned"); self._speak(GREETING, priority=1, sid=sid); self._retriage(sid)
         elif kind == "survivor_says":
             self._add(sid, "survivor", job["text"], job.get("source", "typed"))
             s = self.registry.get(sid); text, src = self.router.reply(s.chat, self.context())
-            self._add(sid, "robot", text, src); self._speak(text); self._retriage(sid)
+            self._add(sid, "robot", text, src); self._speak(text, sid=sid); self._retriage(sid)
         elif kind == "responder_says":
-            self._add(sid, "responder", job["text"], "responder"); self._speak(job["text"], priority=2)
+            self._add(sid, "responder", job["text"], "responder"); self._speak(job["text"], priority=2, sid=sid)
         elif kind == "retriage":
             self._retriage(sid)
 

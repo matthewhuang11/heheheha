@@ -214,7 +214,9 @@ class Runtime:
                     new_dets = [PersonDetection(source="gemini", where=scene.people.where, distance=scene.people.distance, confidence=scene.confidence, at=scene_at)]
             used: set = set()                                 # two people in one frame are two survivors
             for d in new_dets:
-                s, new = self.registry.sighting(d, self.pose.pose(), self.pose.odometer, frame, exclude=used); used.add(s.id)
+                s, new = self.registry.sighting(d, self.pose.pose(), self.pose.odometer, frame, exclude=used)
+                if s is None: continue                        # far and unknown: wait until the robot is closer
+                used.add(s.id)
                 if new:
                     print(f"[survivors] NEW {s.id} at ({s.pose.x_cm:.0f}, {s.pose.y_cm:.0f}) cm via {d.source}", flush=True)
                     if self.talk: self.talk.submit("new_survivor", s.id)

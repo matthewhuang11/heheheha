@@ -47,8 +47,11 @@ class Registry:
         d = sc["dist_cm"][det.distance]; a = math.radians(pose.heading_deg + b)
         return pose.x_cm + d * math.cos(a), pose.y_cm + d * math.sin(a)
 
-    def sighting(self, det: PersonDetection, pose: Pose, odometer: float, frame=None, exclude: set | None = None) -> tuple[Survivor, bool]:
-        """Record one confirmed detection. Returns (survivor, is_new)."""
+    def sighting(self, det: PersonDetection, pose: Pose, odometer: float, frame=None, exclude: set | None = None) -> tuple[Survivor | None, bool]:
+        """Record one confirmed detection. Returns (survivor, is_new), or (None, False) when a FAR sighting matches nobody:
+        "far" means anything past ~2.5 m, so its position guess is too rough to start a new record (tested in the sim,
+        it made duplicates in the wrong place). Far sightings still update survivors already on the list; the robot
+        creates the record once it is close enough for a mid or near sighting."""
         x, y = self.estimate(det, pose, self.cfg); now = time.monotonic()
         with self.lock:
             best, best_d = None, None
@@ -58,6 +61,8 @@ class Registry:
                 d = math.hypot(s.pose.x_cm - x, s.pose.y_cm - y)
                 if d <= radius and (best_d is None or d < best_d): best, best_d = s, d
             box = 0.0 if det.bbox is None else det.bbox[3] - det.bbox[1]
+            if best is None and det.distance == "far":
+                return None, False
             if best is None:
                 self._n += 1; sid = f"S-{self._n:04d}"; ts = utc_now()
                 s = Survivor(id=sid, first_seen=ts, last_seen=ts, sightings=1,
