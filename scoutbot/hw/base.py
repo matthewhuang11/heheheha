@@ -67,6 +67,8 @@ def build(cfg: dict, shared, world=None):
         from scoutbot.hw.distance_fake import RandomDistance; distance = RandomDistance(hw.get("random_every_s", 1.0))
     elif d == "scripted":
         from scoutbot.hw.distance_fake import ScriptedDistance; distance = ScriptedDistance(hw.get("script", []))
+    elif d == "replay":                                  # [station] wiring: plays back a --record folder (C15)
+        from scoutbot.hw.distance_fake import ReplayDistance; distance = ReplayDistance(hw.get("replay", ""))
     elif d == "simworld":
         if world is None: raise SystemExit("hw.distance=simworld needs the sim world (use --profile sim)")
         from scoutbot.hw.simworld import SimDistance; distance = SimDistance(world)

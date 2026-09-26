@@ -7,6 +7,11 @@ def test_mac_is_an_alias_for_laptop():
     assert a["profile"] == "laptop" and a == b
     assert a["hw"]["distance"] == "sliders"
 
+
+def test_sim_profile_needs_no_webcam():
+    assert settings.load("sim", load_env=False)["hw"]["camera"] == "synthetic"
+
+
 def test_unknown_profile_lists_the_choices():
     with pytest.raises(SystemExit) as e: settings.load("nope", load_env=False)
     msg = str(e.value)

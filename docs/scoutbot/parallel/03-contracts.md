@@ -40,12 +40,16 @@ class PersonDetection(BaseModel):          # scoutbot/types.py (C owns the file,
     distance: Literal["near", "mid", "far"]       # near < ~1 m, mid ~1-2.5 m, far beyond (A tunes the cut-offs)
     confidence: float                              # 0..1
     bbox: tuple[float, float, float, float] | None # normalized x1, y1, x2, y2, or None
+    track_id: str | None                           # optional stable detector identity; registry prefers it over spatial merging
     at: float                                      # time.monotonic() on the ROBOT
 ```
 - `PerceptionWorker` writes **confirmed** detections only: `shared.detections` (list), `shared.det_at` (monotonic), `shared.det_fps`, and `shared.det_status`.
 - **`det_status` values have meaning:** `"running"`, `"sim"` and anything starting with `"remote"` = a live detector. The runtime's survivor loop only falls back to Gemini's people report when the status is none of these (`"off"`, `"loading model"`, `"unavailable: ..."`, `"error: ..."`). Keep those prefixes.
 - `POST /api/detections` body: `{"detections": [PersonDetection...], "fps": float}`. The server rewrites `at` to the robot's clock.
-- `Fuser.fuse(scene, person) -> SceneReport | None` must return **the same object** while its inputs are unchanged (the SceneFilter cache rule).
+- `Fuser.suppress(positions)` receives handled survivor `(x_cm, y_cm, radius_cm)` positions each control tick.
+  `Fuser.fuse(scene, person, person_position=None, scene_position=None) -> SceneReport | None` removes only people at
+  those positions before fusion and returns **the same object** while its inputs and suppression state are unchanged
+  (the SceneFilter cache rule).
 
 ## 3. Safety [A] → runtime [C]
 
@@ -143,6 +147,7 @@ Browser → robot (any message also counts as a heartbeat; the page sends `heart
 {"type":"retriage","survivor_id":"S-0001"}
 {"type":"sim","offline":true|false}
 {"type":"sensor","i":0|1|2,"value":<cm>,"valid":<bool>}    // sliders profile only
+{"type":"handled","survivor_id":"S-0001"}                  // "Continue search": ignore this survivor for survivors.handled_s (60 s); event topic "handled"
 {"type":"ping","t":<float>}                                // reply {"type":"reply","for":"ping","ok":true,"t":<same>} (round-trip time)
 ```
 `sim` and `sensor` are refused (`reply ok:false`) unless `server.test_controls` is true (KI-07).

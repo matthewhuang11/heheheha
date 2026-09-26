@@ -53,9 +53,11 @@ def main(argv=None):
     ap.add_argument("--profile", default=settings.DEFAULT_PROFILE); ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     ap.add_argument("--headless", type=float, default=0, metavar="SECONDS")
     ap.add_argument("--share", action="store_true", help="let other devices on this Wi-Fi open the dashboard")
+    ap.add_argument("--record", action="store_true", help="save camera frames (2/s) and sensor readings to data/recordings/<time>/")
     a = ap.parse_args(argv)
     overrides = list(a.set)
     if a.share: overrides = ["server.host=0.0.0.0"] + overrides
+    if a.record: overrides = ["record.enabled=true"] + overrides
     if a.headless: overrides += ["safety.link_required=false"]
     cfg = settings.load(a.profile, overrides)
 

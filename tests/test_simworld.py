@@ -83,7 +83,8 @@ def count_run(world_name, seed, seconds=300):
     return len(seen), len(reg.all())
 
 def test_one_survivor_record_per_person():
-    # Full sweep (5 seeds x 3 worlds) is in docs/scoutbot/station.md: 13/15 exact with merge_cm 100. These are fast regressions.
-    for name, seed in (("room_basic", 2), ("rubble", 3), ("demo", 5)):
-        seen, records = count_run(name, seed)
-        assert records == seen, f"{name} seed {seed}: saw {seen} people, made {records} records"
+    # C11 acceptance: every deterministic run must produce one record for each person seen.
+    for name in ("room_basic", "rubble", "demo"):
+        for seed in range(1, 6):
+            seen, records = count_run(name, seed)
+            assert records == seen, f"{name} seed {seed}: saw {seen} people, made {records} records"

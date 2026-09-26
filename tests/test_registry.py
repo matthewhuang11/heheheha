@@ -5,8 +5,8 @@ from scoutbot.sync.outbox import Outbox
 from scoutbot.types import PersonDetection, Pose
 
 CFG = settings.load("base", load_env=False)
-def det(where="center", dist="mid", box=(0.4, 0.3, 0.6, 0.7)):
-    return PersonDetection(source="yolo", where=where, distance=dist, confidence=0.9, bbox=box, at=0)
+def det(where="center", dist="mid", box=(0.4, 0.3, 0.6, 0.7), track_id=None):
+    return PersonDetection(source="yolo", where=where, distance=dist, confidence=0.9, bbox=box, track_id=track_id, at=0)
 FRAME = np.zeros((90, 160, 3), np.uint8)
 
 def test_new_then_merge(tmp_path):
@@ -20,6 +20,20 @@ def test_two_people_in_one_frame_are_two_survivors(tmp_path):
     a, _ = r.sighting(det("left", "mid"), Pose(), 0.0, FRAME, exclude=used); used.add(a.id)
     b, new = r.sighting(det("center", "mid"), Pose(), 0.0, FRAME, exclude=used)
     assert new and a.id != b.id
+
+
+def test_stable_tracks_override_ambiguous_positions_and_reload(tmp_path):
+    r = Registry(CFG, data_dir=tmp_path)
+    a, new_a = r.sighting(det(track_id="detector:1"), Pose(), 0.0, FRAME)
+    b, new_b = r.sighting(det(track_id="detector:2"), Pose(), 0.0, FRAME)
+    duplicate, duplicate_new = r.sighting(det(track_id="detector:1"), Pose(), 0.0, FRAME, exclude={a.id})
+    again, new_again = r.sighting(det(track_id="detector:1"), Pose(x_cm=500), 500.0, FRAME)
+    assert new_a and new_b and duplicate is None and not duplicate_new and not new_again and a.id != b.id and again.id == a.id
+
+    r2 = Registry(CFG, data_dir=tmp_path)
+    reloaded, new_reloaded = r2.sighting(det(track_id="detector:2"), Pose(x_cm=800), 800.0, FRAME)
+    assert not new_reloaded and reloaded.id == b.id
+
 
 def test_far_sighting_never_creates_but_updates(tmp_path):
     r = Registry(CFG, data_dir=tmp_path)

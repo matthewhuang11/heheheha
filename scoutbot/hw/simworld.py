@@ -124,7 +124,8 @@ class World:
             frac = min(1.0, 12000 / max(s["dist"], 1) / 360)
             cx = 0.5 - s["bearing"] / 60.0
             dets.append(PersonDetection(source="sim", where=where, distance=dist, confidence=0.9,
-                                        bbox=(max(0, cx - frac / 4), max(0, 0.5 - frac / 2), min(1, cx + frac / 4), min(1, 0.5 + frac / 2)), at=now))
+                                        bbox=(max(0, cx - frac / 4), max(0, 0.5 - frac / 2), min(1, cx + frac / 4), min(1, 0.5 + frac / 2)),
+                                        track_id=f"sim:{self.name}:{s['i']}", at=now))
         return dets
     def scene_report(self) -> SceneReport:
         c = self.raycast(0); l = self.raycast(25); r = self.raycast(-25)

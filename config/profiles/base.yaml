@@ -6,7 +6,7 @@ hw:
   camera_index: 0           # portable default; CAMERA_INDEX in .env overrides it
   camera_folder: dataset/
   camera_fps: 15
-  distance: sliders         # sliders | random | scripted | simworld | hcsr04 | tof
+  distance: sliders         # sliders | random | scripted | replay | simworld | hcsr04 | tof
   random_every_s: 1.0
   motors: fake              # fake | l298n
   # GPIO numbers (BCM). PLACEHOLDERS: the hardware team fills these in.
@@ -69,10 +69,11 @@ survivors:
   dist_cm: {near: 70, mid: 200, far: 400}
   max_snapshots: 5
   data_dir: data
+  handled_s: 60              # 'Continue search': ignore a handled survivor for this long (KI-38)
 
 talk:
   enabled: true
-  gemini: {timeout_s: 8}
+  gemini: {timeout_s: 12}    # Gemini API rejects deadlines under 10 s (400 INVALID_ARGUMENT)
   ollama: {url: "http://localhost:11434", model: "qwen2.5:3b", timeout_s: 20, keep_alive: "30m"}
   breaker: {fail_threshold: 3, open_s: 30}
   history_messages: 12       # maximum chat lines included in each model request
@@ -99,6 +100,11 @@ sim:
   world: room_basic
   noise: 0.05
   fake_people: true        # false: the sim camera sees nobody (tests the no-person paths)
+
+record:                     # --record: camera frames + sensor readings for replay (C15)
+  enabled: false            # --record sets this
+  fps: 2                    # frames saved per second
+  dir: ""                   # empty = <survivors.data_dir>/recordings/<time>
 
 server:
   host: 127.0.0.1

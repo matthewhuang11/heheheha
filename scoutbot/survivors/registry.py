@@ -22,7 +22,7 @@ class Registry:
         sc = cfg["survivors"]; self.cfg = sc; self.bus = bus; self.outbox = outbox
         self.dir = Path(data_dir or sc.get("data_dir", "data")); (self.dir / "snapshots").mkdir(parents=True, exist_ok=True)
         self.path = self.dir / "survivors.jsonl"; self.lock = threading.RLock()
-        self.items: dict[str, Survivor] = {}; self._w: dict[str, float] = {}; self._odo_seen: dict[str, float] = {}
+        self.items: dict[str, Survivor] = {}; self._tracks: dict[str, str] = {}; self._w: dict[str, float] = {}; self._odo_seen: dict[str, float] = {}
         self._saved_at: dict[str, float] = {}; self._dirty: set[str] = set(); self._n = 0
         self._load()
 
@@ -32,6 +32,7 @@ class Registry:
             try: s = Survivor.model_validate_json(line)
             except Exception: continue
             self.items[s.id] = s; self._w[s.id] = max(1.0, s.sightings); self._odo_seen[s.id] = 0.0
+            if s.track_id: self._tracks[s.track_id] = s.id
             self._n = max(self._n, int(s.id.split("-")[1]))
         if self.items: print(f"[survivors] reloaded {len(self.items)} from {self.path}", flush=True)
 
@@ -62,23 +63,33 @@ class Registry:
         x, y = self.estimate(det, pose, self.cfg); now = time.monotonic()
         with self.lock:
             best, best_d = None, None
-            for sid, s in self.items.items():
-                if exclude and sid in exclude: continue
-                radius = self.cfg.get("merge_cm", 100) + DRIFT * max(0.0, odometer - self._odo_seen.get(sid, odometer)) + SLACK[det.distance]
-                d = math.hypot(s.pose.x_cm - x, s.pose.y_cm - y)
-                if d <= radius and (best_d is None or d < best_d): best, best_d = s, d
+            tracked_sid = self._tracks.get(det.track_id) if det.track_id else None
+            if tracked_sid and exclude and tracked_sid in exclude:
+                return None, False                       # duplicate observation of an already-used tracked person in this frame
+            if tracked_sid:
+                best = self.items.get(tracked_sid)
+            elif not det.track_id:
+                for sid, s in self.items.items():
+                    if exclude and sid in exclude: continue
+                    radius = self.cfg.get("merge_cm", 100) + DRIFT * max(0.0, odometer - self._odo_seen.get(sid, odometer)) + SLACK[det.distance]
+                    d = math.hypot(s.pose.x_cm - x, s.pose.y_cm - y)
+                    if d <= radius and (best_d is None or d < best_d): best, best_d = s, d
             box = 0.0 if det.bbox is None else det.bbox[3] - det.bbox[1]
             if best is None and det.distance == "far":
                 return None, False
             if best is None:
                 self._n += 1; sid = f"S-{self._n:04d}"; ts = utc_now()
                 s = Survivor(id=sid, first_seen=ts, last_seen=ts, sightings=1,
-                             pose=Pose(x_cm=round(x, 1), y_cm=round(y, 1), heading_deg=0, uncertainty_cm=pose.uncertainty_cm + SLACK[det.distance], source=pose.source))
+                             pose=Pose(x_cm=round(x, 1), y_cm=round(y, 1), heading_deg=0, uncertainty_cm=pose.uncertainty_cm + SLACK[det.distance], source=pose.source),
+                             track_id=det.track_id)
                 self.items[sid] = s; self._w[sid] = WEIGHT[det.distance]; self._odo_seen[sid] = odometer
+                if det.track_id: self._tracks[det.track_id] = sid
                 if frame is not None: self._snapshot(s, frame, box)
                 self._persist(s, now, sighting=(det, x, y)); new = True
             else:
                 s = best; w0 = self._w.get(s.id, 1.0); w = WEIGHT[det.distance]
+                if det.track_id and not s.track_id:
+                    s.track_id = det.track_id; self._tracks[det.track_id] = s.id
                 nx = (s.pose.x_cm * w0 + x * w) / (w0 + w); ny = (s.pose.y_cm * w0 + y * w) / (w0 + w)
                 s.pose = Pose(x_cm=round(nx, 1), y_cm=round(ny, 1), heading_deg=0,
                               uncertainty_cm=round(min(s.pose.uncertainty_cm, pose.uncertainty_cm + SLACK[det.distance]), 1), source=pose.source)
