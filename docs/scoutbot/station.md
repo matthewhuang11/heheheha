@@ -27,32 +27,23 @@
   `state()` stays under 5 ms with 20 survivors x 50 messages (test).
 - **`sim.fake_people: false`** makes the sim camera see nobody (KI-21).
 
-## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock)
+## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock, 5 seeds x 3 worlds)
 
-People "seen" = came within 2.5 m in view. Records = entries the registry created. Sweep of `survivors.merge_cm`:
+People "seen" = came within 2.5 m in view. Records = entries the registry created.
 
-| merge_cm | runs exact (of 15) | extra records | missing records |
+After KI-22 (the pose and the sim use per-action speeds: forward 30, slow 18, back-up 18 cm/s, turns 90 deg/s,
+interpolated during ramps), sweep of `survivors.merge_cm`:
+
+| merge_cm | runs exact (of 15) | extra (duplicate) records | missing (merged) records |
 | --- | --- | --- | --- |
-| 50 | 5 | 13 | 0 |
-| 70 | 7 | 11 | 0 |
-| 85 | 13 | 1 | 0 + 1 merged |
-| **100 (kept)** | **13** | **1** | **1** |
+| 60 | 7 | 8 | 0 |
+| 75 | 10 | 3 | 2 |
+| **85 (new default)** | **13** | **0** | **2** |
+| 100 (old default) | 12 | 0 | 3 |
 
-Per run at 100 (world seed: seen/records): room_basic 1:1/1 2:2/2 3:1/1 4:1/1 5:2/2; rubble 1:2/3 2:1/1 3:2/2 4:2/2 5:0/0;
-demo 1:1/1 2:2/1 3:1/1 4:1/1 5:2/2. The two misses: rubble seed 1 drifts ~250 cm before re-seeing a person (duplicate);
-demo seed 2 sees two people 155 cm apart in separate frames, and they merge. Both come from dead-reckoning drift,
-not the merge rule; KI-22 (per-action speeds) should help. Regression test: `test_one_survivor_record_per_person`.
-
-## How to run
-
-```bash
-./start.sh                  # menu (Mac: double-click start.command; Windows: start.bat)
-./start.sh sim --share      # simulator, open from a phone on the same Wi-Fi
-python -m scoutbot --profile laptop --share
-python -m scoutbot.tools.doctor
-python -m pytest -q tests
-python -m scoutbot --profile sim --set sim.world=demo --headless 20
-```
+Before KI-22, 100 gave 13/15 with 1 duplicate and 1 merge. The only misses left at 85 are demo seeds 2 and 4: the demo
+world's two people stand 155 cm apart and are seen in separate frames, so drift merges them. Headless 20 s demo now
+finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_person` (3 seeds, ~1.7 s).
 
 ## Fresh-machine test log
 
