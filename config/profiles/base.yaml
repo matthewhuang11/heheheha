@@ -98,7 +98,7 @@ net:
 sim:
   world: room_basic
   noise: 0.05
-  fake_people: true
+  fake_people: true        # false: the sim camera sees nobody (tests the no-person paths)
 
 server:
   host: 127.0.0.1

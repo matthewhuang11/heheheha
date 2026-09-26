@@ -53,3 +53,9 @@ def test_five_minute_auto_run_has_zero_wall_contacts():
             w, moved, _ = run(name, seed=seed)
             assert w.contacts == 0, f"{name} seed {seed}: {w.contacts} contacts"
             assert moved > 150, f"{name}: robot barely moved ({moved:.0f} cm)"
+
+def test_fake_people_false_hides_survivors():
+    cfg = settings.load("sim", ["sim.fake_people=false"], load_env=False)
+    w = World(cfg, "room_basic", seed=1); w.x, w.y, w.h = 400.0, 100.0, 0.0
+    assert w.visible_survivors() and w.detections(0.0) == []
+    assert w.scene_report().people.visible is False

@@ -51,6 +51,7 @@ class World:
         st = w.get("start", {"x": W / 2, "y": H / 2, "heading": 0})
         self.x, self.y, self.h = float(st["x"]), float(st["y"]), float(st["heading"])
         self.rng = random.Random(seed); self.noise = cfg["sim"].get("noise", 0.05)
+        self.fake_people = bool(cfg["sim"].get("fake_people", True))   # False: the camera "sees" nobody (tests no-person paths)
         m = cfg["motion"]; self.k = m["forward_cm_s"] / max(cfg["speeds"]["FORWARD"][0], 1e-6)
         self.turn_k = m["turn_deg_s"] / max(abs(cfg["speeds"]["TURN_LEFT"][1]), 1e-6)
         # a fixed per-run wheel mismatch makes dead reckoning drift like a real robot
@@ -116,6 +117,7 @@ class World:
             out.append({"i": i, "x": sx, "y": sy, "dist": dist, "bearing": bearing})
         return sorted(out, key=lambda s: s["dist"])
     def detections(self, now: float) -> list[PersonDetection]:
+        if not self.fake_people: return []
         dets = []
         for s in self.visible_survivors():
             where = "left" if s["bearing"] > 10 else "right" if s["bearing"] < -10 else "center"
