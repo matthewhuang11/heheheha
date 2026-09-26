@@ -89,6 +89,28 @@ Invariants with automated tests: boot STOPPED, E-stop (test_server, test_deadman
 (static test), watchdog 0.5 s (test_deadman), manual command expiry 0.3 s (test_deadman), link loss (test_deadman),
 forward refused/capped (test_gate).
 
+### R6 sensor blind spot (KI-39)
+
+`hw.sensor_angles` (default `[30, 0, -30]`) and `hw.sensor_beam_deg` (15) now drive the sim's raycast sensors and the map's
+obstacle dots. Study: closed-loop AUTO, 300 s per run, fast-forwarded clock (`tests/test_simworld.py: run()`), 20 seeds per world.
+Contacts = times the robot body touched a wall/box (should be 0).
+
+| side sensors | room_basic contacts | rubble contacts | demo contacts | total (60 runs) | avg distance explored |
+| --- | --- | --- | --- | --- | --- |
+| +/-30 deg (current) | 7 | 43 | 0 | **50** | 1000-1460 cm |
+| **+/-45 deg (recommended)** | 1 | 4 | 4 | **9** | 1230-1720 cm |
+| +/-60 deg | 3 | 3 | 1 | **7** | 845-1750 cm |
+
+(A first 10-seed pass gave 8 / 2 / 6 total, the same ranking between 30 and 45.)
+- At +/-30 deg the robot's side clips thin wall ends and box corners at ~60-90 deg off its heading, where no beam looks.
+- +/-60 deg sees the sides best but leaves a gap between 7.5 and 52.5 deg: small objects slightly off-centre are only seen by
+  the center beam, and in the demo world the robot explores less (845 cm).
+- **Recommendation: side sensors at +/-45 deg**, center straight ahead. 5x fewer contacts than today, with full coverage from
+  -52.5 to +52.5 deg with 15 deg beams (small gaps at +/-7.5-37.5 deg are covered by the center's 15 deg beam and the brain's
+  side rules). If a 4th sensor is possible, the next best addition is a short-range side sensor on each flank.
+- The default stays +/-30 deg until the hardware team confirms the mount; switch with `hw.sensor_angles: [45, 0, -45]` in pi.yaml.
+- Regression: `test_recommended_sensor_layout_45_deg` (rubble seed 8: contacts at +/-30, none at +/-45).
+
 ## Pi bring-up log
 
 - Waiting for Pi hardware, actual GPIO pins, sensor type, camera model, and motor battery voltage.

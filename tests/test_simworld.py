@@ -88,3 +88,30 @@ def test_one_survivor_record_per_person():
         for seed in range(1, 6):
             seen, records = count_run(name, seed)
             assert records == seen, f"{name} seed {seed}: saw {seen} people, made {records} records"
+
+def test_recommended_sensor_layout_45_deg():
+    """KI-39: with side sensors at +/-45 deg the rubble run that clips a box at +/-30 deg (seed 8) has no contacts.
+    Full study (20 seeds x 3 worlds x 3 layouts) in docs/scoutbot/robot.md."""
+    import copy
+    global CFG
+    saved = CFG
+    try:
+        c30 = copy.deepcopy(saved); c30["hw"]["sensor_angles"] = [30, 0, -30]
+        c45 = copy.deepcopy(saved); c45["hw"]["sensor_angles"] = [45, 0, -45]
+        CFG = c30; w30, _, _ = run("rubble", seed=8)
+        CFG = c45; w45, moved, _ = run("rubble", seed=8)
+    finally:
+        CFG = saved
+    assert w30.contacts > 0 and w45.contacts == 0 and moved > 150
+
+def test_sensor_angles_come_from_config():
+    import copy
+    c = copy.deepcopy(CFG); c["hw"]["sensor_angles"] = [60, 0, -60]; c["hw"]["sensor_beam_deg"] = 10
+    w = World(c, "room_basic", seed=1)
+    assert w.sensor_angles == (60.0, 0.0, -60.0) and w.beam_half == 5.0
+    from scoutbot.survivors.mapping import MapBuilder
+    from scoutbot.types import Pose
+    m = MapBuilder(sensor_angles=(90, 0, -90))
+    for _ in range(3): m.update(Pose(), (100, None, None))
+    ox, oy = m.snapshot()["obstacles"][0]
+    assert abs(ox) < 1 and oy > 100            # the left sensor at +90 deg puts the dot on +y

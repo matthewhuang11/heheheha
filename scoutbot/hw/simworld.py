@@ -51,6 +51,9 @@ class World:
         st = w.get("start", {"x": W / 2, "y": H / 2, "heading": 0})
         self.x, self.y, self.h = float(st["x"]), float(st["y"]), float(st["heading"])
         self.rng = random.Random(seed); self.noise = cfg["sim"].get("noise", 0.05)
+        hw = cfg.get("hw", {})
+        self.sensor_angles = tuple(float(a) for a in hw.get("sensor_angles", SENSOR_ANGLES))    # KI-39: layout from config
+        self.beam_half = float(hw.get("sensor_beam_deg", 2 * BEAM_HALF)) / 2
         self.fake_people = bool(cfg["sim"].get("fake_people", True))   # False: the camera "sees" nobody (tests no-person paths)
         from scoutbot.survivors.pose import Calibration
         self.cal = Calibration(cfg)            # same per-action speeds as the pose estimate (KI-22)
@@ -100,8 +103,8 @@ class World:
         return best
     def sensors(self) -> Sensors:
         vals, ok = [], []
-        for ang in SENSOR_ANGLES:
-            d = min(self.raycast(ang + o) for o in (-BEAM_HALF, 0, BEAM_HALF))
+        for ang in self.sensor_angles:
+            d = min(self.raycast(ang + o) for o in (-self.beam_half, 0, self.beam_half))
             d = max(0.0, d - ROBOT_R)                    # sensors sit at the front edge
             if d > MAX_ECHO or self.rng.random() < 0.02: vals.append(0.0); ok.append(False)    # no echo
             else: vals.append(round(max(2.0, d * (1 + self.rng.gauss(0, 0.01))), 1)); ok.append(True)
