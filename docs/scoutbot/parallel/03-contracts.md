@@ -40,6 +40,7 @@ class PersonDetection(BaseModel):          # scoutbot/types.py (C owns the file,
     distance: Literal["near", "mid", "far"]       # near < ~1 m, mid ~1-2.5 m, far beyond (A tunes the cut-offs)
     confidence: float                              # 0..1
     bbox: tuple[float, float, float, float] | None # normalized x1, y1, x2, y2, or None
+    track_id: str | None                           # optional stable detector identity; registry prefers it over spatial merging
     at: float                                      # time.monotonic() on the ROBOT
 ```
 - `PerceptionWorker` writes **confirmed** detections only: `shared.detections` (list), `shared.det_at` (monotonic), `shared.det_fps`, and `shared.det_status`.
