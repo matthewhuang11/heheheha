@@ -111,6 +111,25 @@ Contacts = times the robot body touched a wall/box (should be 0).
 - The default stays +/-30 deg until the hardware team confirms the mount; switch with `hw.sensor_angles: [45, 0, -45]` in pi.yaml.
 - Regression: `test_recommended_sensor_layout_45_deg` (rubble seed 8: contacts at +/-30, none at +/-45).
 
+### R7 cliff sensor (KI-40)
+- `DistanceSensors.read_cliff() -> float | None`: cm to the floor, 999 = no floor, None = not fitted. `hw.cliff: none | hcsr04 | tof`
+  with `hw.cliff_pins` (placeholders); drivers in `scoutbot/hw/cliff.py`. `build()` attaches it to every distance driver, and the
+  runtime passes it to `controller.step(cliff=)`; the frozen brain's rule 2 backs up when it reads > 15 cm. A sensor read error
+  counts as a drop (safe side).
+- Sim: world YAML `drops: [[x, y, w, h], ...]`; `World.cliff()` looks 15 cm ahead (`hw.cliff_ahead_cm`); `world.falls` counts a
+  wheel going over the edge. New world `config/worlds/dropoff.yaml` (open stairwell in front of the start).
+- Result: with the sensor, 0 falls in 120 s; the robot backs up / stops at the edge and never drives forward while the sensor
+  sees a drop. Without it, it drives straight in. `python -m scoutbot --profile sim --set sim.world=dropoff` shows rule 2
+  "floor drop ahead" on the dashboard. Test: `test_cliff_sensor_stops_the_robot_at_a_drop`.
+- Limit: the brain's answer to a drop is BACK_UP (gate: 1.5 s bursts) and then its normal rules; in the dropoff world the robot
+  can sit at the edge alternating BACK_UP and STOP rather than turning away. Safe, but a turn-away would explore better; that needs a
+  brain rule change (frozen), so it's noted for the team.
+
+### R8 hardware hand-off
+`docs/scoutbot/hardware-handoff.md`: wiring table with placeholder BCM + physical pins, 1 kOhm / 2 kOhm echo dividers,
+ToF XSHUT/addresses, cliff sensor, camera, power and common ground, kill switch, 10 kOhm pull-downs on ENA/ENB, the +/-45 deg
+recommendation, a "send us back" list and the exact first-power-up commands.
+
 ## Pi bring-up log
 
 - Waiting for Pi hardware, actual GPIO pins, sensor type, camera model, and motor battery voltage.
