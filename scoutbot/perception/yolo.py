@@ -58,6 +58,7 @@ class PerceptionWorker:
         with self.shared.lock: self.shared.det_status = s; self.shared.services["yolo"] = s
     def run(self):
         where = self.y.get("where", "robot")
+        if where in (False, None, "off", "false", "none"): where = "off"   # YAML reads a bare `off` as False
         if where == "off": self._status("off"); return
         if where == "remote": self._status("remote (laptop worker)"); return
         if where == "sim":
@@ -82,6 +83,7 @@ class PerceptionWorker:
             dets = self.conf.push(raw); now = time.monotonic(); times.append(now - t0)
             with self.shared.lock:
                 self.shared.detections = dets; self.shared.det_at = now
+                self.shared.det_frame = frame if dets else None      # KI-09: the exact frame these boxes came from
                 self.shared.det_fps = round(len(times) / max(sum(times), 1e-6), 1)
     def start(self):
         threading.Thread(target=self.run, daemon=True, name="perception").start(); return self

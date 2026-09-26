@@ -11,6 +11,7 @@ class Camera(Protocol):
 
 class DistanceSensors(Protocol):
     def read(self) -> Sensors: ...                # raw left/center/right cm, valid flags, updated_at (monotonic)
+    def read_cliff(self) -> float | None: ...     # optional (KI-40): downward cm to floor, 999 = drop, None = not fitted
     def close(self) -> None: ...
 
 class Motors(Protocol):
@@ -77,6 +78,9 @@ def build(cfg: dict, shared, world=None):
     elif d == "tof":
         from scoutbot.hw.distance_tof import ToFArray; distance = ToFArray(hw["tof_xshut"])
     else: raise SystemExit(f"unknown hw.distance '{d}'")
+    if not hasattr(distance, "read_cliff"):              # KI-40: optional downward sensor; None when not fitted
+        from scoutbot.hw.cliff import build_cliff
+        distance.read_cliff = build_cliff(cfg).read
 
     m = hw["motors"]
     if m == "fake":
