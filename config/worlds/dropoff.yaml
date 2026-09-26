@@ -1,0 +1,11 @@
+# A 6 x 4 m room with a stairwell / hole (KI-40 cliff sensor demo). Units: cm. Robot starts facing the drop-off.
+# drops: floor holes [x, y, width, height]; walls cannot be seen by the downward sensor and vice versa.
+size: [600, 400]
+start: {x: 100, y: 200, heading: 0}
+walls: []
+boxes:
+  - [150, 40, 40, 40]
+drops:
+  - [300, 120, 120, 160]     # a stairwell in the middle of the floor, open (no wall around it)
+survivors:
+  - [520, 330]

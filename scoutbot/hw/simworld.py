@@ -48,9 +48,15 @@ class World:
             segs += [(x, y, x + bw, y), (x + bw, y, x + bw, y + bh), (x + bw, y + bh, x, y + bh), (x, y + bh, x, y)]
         self.segs = segs; self.boxes = w.get("boxes", []); self.walls = w.get("walls", [])
         self.survivors = [tuple(s) for s in w.get("survivors", [])]
+        self.drops = [tuple(d) for d in w.get("drops", [])]    # KI-40: floor drop-offs [x, y, width, height] (stairs, holes)
+        self.cliff_ahead = float(cfg.get("hw", {}).get("cliff_ahead_cm", 15))   # the downward sensor looks this far ahead
+        self.falls = 0
         st = w.get("start", {"x": W / 2, "y": H / 2, "heading": 0})
         self.x, self.y, self.h = float(st["x"]), float(st["y"]), float(st["heading"])
         self.rng = random.Random(seed); self.noise = cfg["sim"].get("noise", 0.05)
+        hw = cfg.get("hw", {})
+        self.sensor_angles = tuple(float(a) for a in hw.get("sensor_angles", SENSOR_ANGLES))    # KI-39: layout from config
+        self.beam_half = float(hw.get("sensor_beam_deg", 2 * BEAM_HALF)) / 2
         self.fake_people = bool(cfg["sim"].get("fake_people", True))   # False: the camera "sees" nobody (tests no-person paths)
         from scoutbot.survivors.pose import Calibration
         self.cal = Calibration(cfg)            # same per-action speeds as the pose estimate (KI-22)
@@ -73,8 +79,22 @@ class World:
                 if not self._touching: self.contacts += 1
                 self._touching = True; self.h = nh            # can still rotate in place
                 return
+            if self._over_edge(nx, ny, nh):                    # a front wheel would go over the edge: counted as a fall
+                self.falls += 1; self.h = nh; return          # (held at the edge so a run can continue)
             self._touching = False; self.distance_travelled += abs(v * dt)
             self.x, self.y, self.h = nx, ny, nh % 360
+    def in_drop(self, x, y) -> bool:
+        return any(dx <= x <= dx + dw and dy <= y <= dy + dh for dx, dy, dw, dh in self.drops)
+    def _over_edge(self, x, y, h) -> bool:
+        if not self.drops: return False
+        a = math.radians(h)
+        return self.in_drop(x, y) or self.in_drop(x + ROBOT_R * math.cos(a), y + ROBOT_R * math.sin(a))
+    def cliff(self) -> float | None:
+        """Downward sensor: None if the world has no drops (no sensor fitted); else cm to the floor, 999 over a drop."""
+        if not self.drops: return None
+        with self.lock: x, y, h = self.x, self.y, self.h
+        a = math.radians(h); px, py = x + self.cliff_ahead * math.cos(a), y + self.cliff_ahead * math.sin(a)
+        return 999.0 if self.in_drop(px, py) else round(4.0 + self.rng.uniform(-0.3, 0.3), 1)
     def _collides(self, x, y):
         if any(_point_seg_dist(x, y, *s) < ROBOT_R for s in self.segs): return True
         return any(math.hypot(x - sx, y - sy) < ROBOT_R + PERSON_R for sx, sy in self.survivors)
@@ -100,8 +120,8 @@ class World:
         return best
     def sensors(self) -> Sensors:
         vals, ok = [], []
-        for ang in SENSOR_ANGLES:
-            d = min(self.raycast(ang + o) for o in (-BEAM_HALF, 0, BEAM_HALF))
+        for ang in self.sensor_angles:
+            d = min(self.raycast(ang + o) for o in (-self.beam_half, 0, self.beam_half))
             d = max(0.0, d - ROBOT_R)                    # sensors sit at the front edge
             if d > MAX_ECHO or self.rng.random() < 0.02: vals.append(0.0); ok.append(False)    # no echo
             else: vals.append(round(max(2.0, d * (1 + self.rng.gauss(0, 0.01))), 1)); ok.append(True)
@@ -139,10 +159,12 @@ class World:
     def pose(self) -> Pose:
         with self.lock: return Pose(x_cm=self.x, y_cm=self.y, heading_deg=self.h, uncertainty_cm=0, source="sim")
     def layout(self) -> dict:
-        return {"size": self.size, "walls": self.walls, "boxes": self.boxes, "survivors": self.survivors, "name": self.name}
+        return {"size": self.size, "walls": self.walls, "boxes": self.boxes, "survivors": self.survivors, "name": self.name,
+                "drops": self.drops}
 
 class SimDistance:
     def __init__(self, world: World): self.world = world
     def read(self) -> Sensors:
         time.sleep(0.06); return self.world.sensors()
+    def read_cliff(self) -> float | None: return self.world.cliff()
     def close(self): pass
