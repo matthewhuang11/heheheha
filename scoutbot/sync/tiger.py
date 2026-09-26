@@ -5,6 +5,14 @@
 If TimescaleDB is not available the tables still work as plain Postgres tables."""
 from __future__ import annotations
 import json
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+def ssl_required(url: str) -> str:
+    """Tiger Cloud requires TLS. Preserve an explicit sslmode if supplied."""
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.setdefault("sslmode", "require")
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 SETUP = [
     """CREATE TABLE IF NOT EXISTS survivors (id text PRIMARY KEY, version int NOT NULL, updated_at timestamptz DEFAULT now(),
@@ -21,7 +29,7 @@ class TigerSink:
     def __init__(self, url: str):
         if not url: raise ValueError("TIGER_DATABASE_URL is not set in .env")
         import psycopg
-        self.conn = psycopg.connect(url, autocommit=True, connect_timeout=5)
+        self.conn = psycopg.connect(ssl_required(url), autocommit=True, connect_timeout=5)
         with self.conn.cursor() as cur:
             for q in SETUP: cur.execute(q)
         for q in HYPER:

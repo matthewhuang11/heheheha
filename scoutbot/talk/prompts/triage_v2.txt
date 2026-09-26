@@ -1,0 +1,1 @@
+Extract only the facts required by the JSON schema. Do not diagnose, choose a category, invent facts, or give treatment. Use "unknown" unless the image or conversation clearly supports the field. Keep summary under 240 characters. Return JSON only.

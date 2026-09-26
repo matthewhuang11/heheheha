@@ -2,7 +2,7 @@
 is never repeated within dedupe_s. ElevenLabs (eleven_flash_v2_5, streamed) when online and a key is set, otherwise the
 local voice: `say` on the Mac, `espeak-ng` on the Pi. provider: fake just prints [SAY] ..."""
 from __future__ import annotations
-import itertools, os, platform, queue, shutil, subprocess, tempfile, threading, time
+import itertools, os, platform, queue, shutil, subprocess, tempfile, threading, time, wave
 import httpx
 
 class FakeVoice:
@@ -14,11 +14,40 @@ class LocalVoice:
     def __init__(self):
         self.cmd = None
         if platform.system() == "Darwin" and shutil.which("say"): self.cmd = ["say"]
+        elif platform.system() == "Windows" and shutil.which("powershell"): self.cmd = ["powershell", "-NoProfile", "-Command"]
         elif shutil.which("espeak-ng"): self.cmd = ["espeak-ng", "-s", "150"]
         elif shutil.which("espeak"): self.cmd = ["espeak", "-s", "150"]
     def speak(self, text: str):
         if self.cmd is None: print(f"[SAY (no local voice installed)] {text}", flush=True); return
-        subprocess.run(self.cmd + [text], timeout=60, check=False)
+        if platform.system() == "Windows":
+            escaped = text.replace("'", "''")
+            command = "Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer).Speak('" + escaped + "')"
+            subprocess.run(self.cmd + [command], timeout=60, check=False)
+        else:
+            subprocess.run(self.cmd + [text], timeout=60, check=False)
+
+def pcm_to_wav(pcm: bytes, path: str) -> None:
+    """Write ElevenLabs pcm_22050 output as a portable mono WAV file."""
+    with wave.open(path, "wb") as out:
+        out.setnchannels(1); out.setsampwidth(2); out.setframerate(22050); out.writeframes(pcm)
+
+def play_audio_file(path: str) -> bool:
+    """Play a local MP3/WAV using the native player for the current OS."""
+    system = platform.system()
+    if system == "Darwin" and shutil.which("afplay"):
+        command = ["afplay", path]
+    elif system == "Windows" and shutil.which("powershell"):
+        command = ["powershell", "-NoProfile", "-Command", f"(New-Object Media.SoundPlayer '{path.replace(chr(39), chr(39) * 2)}').PlaySync()"]
+    elif system != "Windows" and shutil.which("aplay"):
+        command = ["aplay", "-q", path]
+    elif shutil.which("mpg123"):
+        command = ["mpg123", "-q", path]
+    elif shutil.which("ffplay"):
+        command = ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path]
+    else:
+        return False
+    subprocess.run(command, timeout=60, check=False)
+    return True
 
 class ElevenLabsVoice:
     name = "elevenlabs"
@@ -29,7 +58,9 @@ class ElevenLabsVoice:
         self.stream_player = (["mpg123", "-q", "-"] if shutil.which("mpg123") else
                               ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-"] if shutil.which("ffplay") else None)
     def speak(self, text: str):
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.voice}/stream?output_format=mp3_44100_128"
+        is_windows = platform.system() == "Windows"
+        output_format = "pcm_22050" if is_windows else "mp3_44100_128"
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{self.voice}/stream?output_format={output_format}"
         body = {"text": text, "model_id": self.model}
         with self.http.stream("POST", url, headers={"xi-api-key": self.key}, json=body) as r:
             r.raise_for_status()
@@ -38,10 +69,14 @@ class ElevenLabsVoice:
                 for chunk in r.iter_bytes(): p.stdin.write(chunk)
                 p.stdin.close(); p.wait(timeout=60); return
             data = b"".join(r.iter_bytes())
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f: f.write(data); path = f.name
+        with tempfile.NamedTemporaryFile(suffix=".wav" if is_windows else ".mp3", delete=False) as f:
+            path = f.name
+        if is_windows: pcm_to_wav(data, path)
+        else:
+            with open(path, "wb") as f: f.write(data)
         try:
-            player = ["afplay", path] if shutil.which("afplay") else ["mpg123", "-q", path]
-            subprocess.run(player, timeout=60, check=False)
+            if not play_audio_file(path):
+                raise RuntimeError("no audio player available")
         finally:
             try: os.unlink(path)
             except OSError: pass
@@ -64,7 +99,7 @@ class Speaker:
     def say(self, text: str, priority: int = 0, key: str | None = None):
         """key: what counts as 'the same sentence' for de-duplication (default: the text). The talk worker passes
         survivor id + text so two different survivors can both get the same greeting."""
-        now = time.monotonic(); k = key or text
+        now = time.monotonic(); self.recent = {old: at for old, at in self.recent.items() if now - at < self.dedupe_s}; k = key or text
         if now - self.recent.get(k, -1e9) < self.dedupe_s: return
         self.recent[k] = now
         self.q.put((-priority, next(self.count), text))
