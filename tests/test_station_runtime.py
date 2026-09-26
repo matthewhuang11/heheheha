@@ -51,3 +51,50 @@ def test_ping_echoes_time(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path); rt = make(tmp_path)
     assert rt.command({"type": "ping", "t": 12.5}) == {"ok": True, "t": 12.5}
     rt.stop()
+
+def test_record_then_replay(tmp_path, monkeypatch):
+    import threading
+    from scoutbot.hw.distance_fake import ReplayDistance
+    from scoutbot.hw.camera_opencv import FolderCamera
+    monkeypatch.chdir(tmp_path); rt = make(tmp_path, "record.enabled=true", "record.fps=20", f"record.dir={tmp_path / 'rec'}")
+    th = threading.Thread(target=rt.record_loop, daemon=True); th.start()
+    from robot.types import Sensors
+    for i in range(6):
+        with rt.shared.lock:
+            rt.shared.raw_sensors = Sensors(left=100 + i, center=50, right=0, valid=(True, True, False), updated_at=time.monotonic())
+            rt.shared.jpeg = open(__file__, "rb").read()[:10]; rt.shared.frame_seq += 1      # any bytes: we only check files appear
+        time.sleep(0.07)
+    rt.stop(); th.join(1)
+    rec = tmp_path / "rec"; lines = (rec / "sensors.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(lines) >= 5 and list(rec.glob("*.jpg"))
+    r = ReplayDistance(str(rec)).read()
+    assert r.valid == (True, True, False) and 100 <= r.left <= 105 and r.center == 50
+    assert ReplayDistance(str(tmp_path / "missing")).read().valid == (False, False, False)
+
+def test_continue_search_releases_the_person_hold(tmp_path, monkeypatch):
+    """KI-38: after 'handled', a detection at that survivor is ignored for handled_s; other people still count."""
+    monkeypatch.chdir(tmp_path); rt = make(tmp_path, "survivors.handled_s=60")
+    near = PersonDetection(source="yolo", where="center", distance="near", confidence=0.9, at=0)
+    s, _ = rt.registry.sighting(near, rt.pose.pose(), 0.0, None)
+    assert rt.unhandled([near], 0.0) == [near]
+    assert rt.command({"type": "handled", "survivor_id": s.id})["ok"] is True
+    now = time.monotonic()
+    assert rt.unhandled([near], now) == []                                   # same spot: ignored
+    left_far = PersonDetection(source="yolo", where="left", distance="far", confidence=0.9, at=0)
+    assert rt.unhandled([left_far], now) == [left_far]                        # someone else: still counts
+    assert rt.unhandled([near], now + 61) == [near]                          # expires after 60 s
+    assert rt.registry.get(s.id).handled_at is not None
+    assert rt.command({"type": "handled", "survivor_id": "S-9999"})["ok"] is False
+    rt.stop()
+
+def test_handled_gemini_person_removed_from_scene(tmp_path, monkeypatch):
+    from robot.types import SceneReport
+    monkeypatch.chdir(tmp_path); rt = make(tmp_path)
+    s, _ = rt.registry.sighting(PersonDetection(source="yolo", where="center", distance="near", confidence=0.9, at=0), rt.pose.pose(), 0.0, None)
+    rt.command({"type": "handled", "survivor_id": s.id})
+    sc = SceneReport(path_ahead="clear", best_direction="center", terrain="flat", hazards=[], objects=[], confidence=0.9, notes="",
+                     people={"visible": True, "where": "center", "distance": "near"})
+    now = time.monotonic()
+    assert rt._scene_person_handled(sc, now)
+    out = rt._scene_without_person(sc); assert out.people.visible is False and rt._scene_without_person(sc) is out
+    rt.stop()

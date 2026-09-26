@@ -26,6 +26,7 @@
 - **Fast state (KI-08):** `Registry.summaries()` + 0.5 s cache, refreshed at once on survivor/chat/triage events.
   `state()` stays under 5 ms with 20 survivors x 50 messages (test).
 - **`sim.fake_people: false`** makes the sim camera see nobody (KI-21).
+- **Simulator camera:** `sim` uses its drawn camera view, so a fresh simulator run needs no webcam or macOS camera permission.
 
 ## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock, 5 seeds x 3 worlds)
 
@@ -52,6 +53,7 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | 10:33 | Mac (arm64, Python 3.13) | fresh `git clone -b agent/station`, `./start.sh`, pick 1 | dashboard served, but **401** | ~60 s | `.env.example` (old) had `SCOUTBOT_TOKEN=replace_with_...`, copied into `.env` => dashboard locked. **Fixed** in a8386b7: setup blanks placeholders; settings ignores placeholder values in an existing `.env`. |
 | 10:35 | Mac (arm64, Python 3.13) | fresh clone, `./start.command` (menu 1, share y) | **pass**: localhost 200, LAN URL 200, Start auto over WebSocket drives (pose moved 60,200 -> 174,252; 0 contacts) | 58 s clone -> dashboard (pip cache warm, YOLO included) | none |
 | 10:36 | Linux Docker `python:3.10-slim` | fresh clone, `scripts/setup.py --no-yolo`, tests, headless 20, `./start.sh sim --share` | **pass**: 117 tests, headless 0 contacts / 1 survivor, dashboard 200 | setup 29 s | the slim image needs `libgl1 libglib2.0-0` for OpenCV (normal desktops have them). Doctor now explains this if OpenCV won't load. |
+| 12:14 | Mac (arm64, Python 3.13) | station branch, setup then full suite and 60 s demo sim | **pass**: 136 tests; 1 survivor, 0 contacts, 0 watchdog trips | 63 s demo | sim initially opened an unnecessary denied webcam. **Fixed**: `sim` now uses its drawn camera, verified by the regression test. |
 | - | Windows | `start.bat` | written and reviewed, **not run** (no Windows machine yet) | | Ask a teammate with Windows to double-click it and send the screen output. |
 
 ## Laptop run with real keys (C8, 11:46)
@@ -73,6 +75,7 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | --- | --- | --- | --- | --- | --- |
 | 11:35 | 58c8c11 | agent/station -> main (0f4ea19, ★ C1-C7) | 121 passed | 1 survivor, 0 contacts, 0 trips | clean |
 | 10:37 | c73ec55 (B milestone) | origin/main into agent/station | 121 passed (3.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Removed `sync.sinks: []` from laptop/sim as B requested. |
+| 12:14 | 8f208ea | C13/C15 station validation before merge | 136 passed (6.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Continue-search and record/replay regression tests pass. A has unmerged camera/YOLO work; B has an unmerged reply-filter fix, so neither was merged directly into Station. |
 
 ## Known limits
 

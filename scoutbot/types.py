@@ -72,3 +72,4 @@ class Survivor(BaseModel):
     triage: Triage | None = None
     chat: list[ChatMessage] = Field(default_factory=list)
     version: int = 1
+    handled_at: str | None = None          # when a responder pressed "Continue search" (KI-38); None = not handled

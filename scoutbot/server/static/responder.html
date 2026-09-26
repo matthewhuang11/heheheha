@@ -136,7 +136,7 @@ details summary{cursor:pointer;color:var(--mut);font-size:12px}
     <div class="slist" id="slist"><div class="muted">None found yet.</div></div>
   </div>
   <div class="card" id="scard" hidden>
-    <h2><span id="sTitle">—</span><button id="bRetriage">Re-triage</button></h2>
+    <h2><span id="sTitle">—</span><span><button id="bHandled" title="The robot stops holding at this person for 60 s and carries on searching" aria-label="Continue search, this survivor is handled">Continue search (handled)</button> <button id="bRetriage">Re-triage</button></span></h2>
     <img id="sSnap" class="snap" alt="survivor snapshot">
     <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="sTag" class="tag UNKNOWN">UNKNOWN</span><span class="prelim">Preliminary – for responder review</span>
@@ -315,7 +315,7 @@ async function select(id) {
 async function loadSurvivor() {
   if (!sel) return;
   const r = await fetch(q(`/api/survivors/${sel}`)); if (!r.ok) return; const s = await r.json();
-  $("sTitle").textContent = `${s.id} · seen ${s.sightings}×`;
+  $("sTitle").textContent = `${s.id} · seen ${s.sightings}×${s.handled_at ? " · handled " + new Date(s.handled_at).toLocaleTimeString() : ""}`;
   if (s.best_snapshot) { const src = q(`/snapshots/${s.best_snapshot}`); if ($("sSnap").dataset.src !== src) { $("sSnap").src = src; $("sSnap").dataset.src = src; } $("sSnap").hidden = false; }
   else $("sSnap").hidden = true;
   const t = s.triage;
@@ -337,12 +337,14 @@ function onEvent(ev) {
   else if (ev.topic === "triage") { log(`${p.survivor_id} triage ${p.category} (${p.rule}) by ${p.model}`); if (p.survivor_id === sel) loadSurvivor(); }
   else if (ev.topic === "mode") log(`mode ${p.mode}: ${p.reason}`, p.mode === "STOPPED" ? "bad" : "");
   else if (ev.topic === "net") log(`internet ${p.online ? "online" : "OFFLINE"}`);
+  else if (ev.topic === "handled") log(`${p.survivor_id} handled: robot continues searching (ignores this person for ${p.for_s}s)`, "ok");
 }
 $("sendSurv").onclick = () => { const t = $("inSurv").value.trim(); if (t && sel) { send({ type: "chat", survivor_id: sel, role: "survivor", text: t }); $("inSurv").value = ""; } };
 $("sendResp").onclick = () => { const t = $("inResp").value.trim(); if (t && sel) { send({ type: "chat", survivor_id: sel, role: "responder", text: t }); $("inResp").value = ""; } };
 $("inSurv").onkeydown = e => { if (e.key === "Enter") $("sendSurv").click(); };
 $("inResp").onkeydown = e => { if (e.key === "Enter") $("sendResp").click(); };
 $("bRetriage").onclick = () => sel && send({ type: "retriage", survivor_id: sel });
+$("bHandled").onclick = () => sel && send({ type: "handled", survivor_id: sel });
 
 // ---- modes ----
 $("estop").onclick = () => { release(); send({ type: "estop" }); };

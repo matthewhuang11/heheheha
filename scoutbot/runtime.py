@@ -60,6 +60,7 @@ class Runtime:
         self.log_path = Path("logs"); self.log_path.mkdir(exist_ok=True); self.log_file = self.log_path / "scoutbot_run.jsonl"
         self._last_log = 0.0; self._last_tel = 0.0; self._det_seen = None; self._scene_seen = None
         self._surv_cache = None; self._surv_at = 0.0; self._surv_seq = 0
+        self.handled: dict[str, float] = {}      # survivor id -> monotonic expiry of "Continue search" (KI-38)
         with self.shared.lock: self.shared.services["gemini_scene"] = cfg["scene"]["provider"]
         if start_workers: self.start()
 
@@ -69,6 +70,7 @@ class Runtime:
         for fn, name in ((self.distance_loop, "distance"), (self.scene_loop, "scene"), (self.control_loop, "control"),
                          (self.survivor_loop, "survivors")):
             threading.Thread(target=fn, daemon=True, name=name).start()
+        if self.cfg.get("record", {}).get("enabled"): threading.Thread(target=self.record_loop, daemon=True, name="record").start()
         self.watchdog.start(); self.perception.start(); self.voice.start(); self.net.start(); self.sync.start()
         if self.talk: self.talk.start()
         print(f"[scoutbot] profile={self.cfg['profile']} camera={self.cfg['hw']['camera']} distance={self.cfg['hw']['distance']} "
@@ -145,7 +147,10 @@ class Runtime:
         online = sh.online(); prov = cfg["scene"]["provider"]
         raw.vlm_online = failures < 3 and (online or prov in ("sim", "fake"))
         cam_ok = cam_h or prov in ("sim", "fake")
+        dets = self.unhandled(dets, now)                    # KI-38: ignore people a responder marked handled
         person = fresh_person(dets, det_at, now, cfg["perception"]["yolo"].get("max_age_s", 1.0))
+        if scene is not None and scene.people.visible and self._scene_person_handled(scene, now):
+            scene = self._scene_without_person(scene)
         fused = self.fuser.fuse(scene, person)
         dec = self.controller.step(raw, fused, scene_at, cam_ok, now)
         lost = link_check(mode, link_at, now, cfg["safety"])
@@ -197,6 +202,64 @@ class Runtime:
                 except Exception: pass
             self._stop.wait(max(0.0, period - (time.monotonic() - t0)))
 
+    # ---------------- recording (C15) ----------------
+    def record_loop(self):
+        """Saves camera frames (record.fps, default 2) and every sensor reading to data/recordings/<time>/ for replay:
+        frames as NNNNNN.jpg (the folder camera plays them in order) and sensors.jsonl lines {t, raw, valid}."""
+        rc = self.cfg.get("record", {}); fps = float(rc.get("fps", 2))
+        out = Path(rc.get("dir") or Path(self.cfg["survivors"].get("data_dir", "data")) / "recordings" / time.strftime("%Y%m%d-%H%M%S"))
+        out.mkdir(parents=True, exist_ok=True); self.record_dir = out
+        print(f"[record] saving frames ({fps:g}/s) and sensor readings to {out}", flush=True)
+        n = 0; last_seq = -1; last_frame = 0.0; last_sens = None
+        with open(out / "sensors.jsonl", "a", encoding="utf-8") as f:
+            while not self._stop.is_set():
+                now = time.monotonic()
+                with self.shared.lock: s = self.shared.raw_sensors; jpeg = self.shared.jpeg; seq = self.shared.frame_seq
+                if s.updated_at and s.updated_at != last_sens:
+                    last_sens = s.updated_at
+                    f.write(json.dumps({"t": round(s.updated_at, 3), "raw": [s.left, s.center, s.right], "valid": list(s.valid)}) + "\n"); f.flush()
+                if jpeg is not None and seq != last_seq and now - last_frame >= 1.0 / fps:
+                    last_seq = seq; last_frame = now; n += 1
+                    (out / f"{n:06d}.jpg").write_bytes(jpeg)
+                self._stop.wait(0.05)
+
+    # ---------------- continue search (KI-38) ----------------
+    def _handled_positions(self, now: float) -> list[tuple[float, float, float]]:
+        """(x, y, radius) of survivors a responder marked handled, still inside their hold time."""
+        out = []
+        for sid, until in list(self.handled.items()):
+            if now > until: self.handled.pop(sid, None); continue
+            s = self.registry.get(sid)
+            if s: out.append((s.pose.x_cm, s.pose.y_cm, self.cfg["survivors"].get("merge_cm", 85) + 80.0))
+        return out
+
+    def unhandled(self, dets: list, now: float) -> list:
+        """Detections minus those whose estimated position falls on a handled survivor. Safety is unchanged: the distance
+        sensors and the gate still stop the robot before anything; only the 'stop for this person' hold is released."""
+        spots = self._handled_positions(now) if self.handled else []
+        if not spots or not dets: return dets
+        import math
+        pose = self.pose.pose(); keep = []
+        for d in dets:
+            x, y = Registry.estimate(d, pose, self.cfg["survivors"])
+            if not any(math.hypot(x - hx, y - hy) <= r for hx, hy, r in spots): keep.append(d)
+        return keep
+
+    def _scene_person_handled(self, scene, now: float) -> bool:
+        if not self.handled or scene.people.distance not in ("near", "mid", "far"): return False
+        where = scene.people.where if scene.people.where in ("left", "center", "right") else "center"
+        d = PersonDetection(source="gemini", where=where, distance=scene.people.distance, confidence=1.0, at=now)
+        return not self.unhandled([d], now)
+
+    def _scene_without_person(self, scene):
+        """Cached copy of Gemini's report with its (handled) person removed: the same object while the input is the same,
+        because the brain's SceneFilter treats every new object as a new report."""
+        if getattr(self, "_nop_src", None) is not scene:
+            from robot.types import People
+            self._nop_src = scene
+            self._nop_out = scene.model_copy(update={"people": People(visible=False, where="none", distance="none")})
+        return self._nop_out
+
     # ---------------- survivors ----------------
     def survivor_loop(self):
         while not self._stop.is_set():
@@ -245,6 +308,14 @@ class Runtime:
             return {"ok": True}
         if t == "retriage":
             if self.talk: self.talk.submit("retriage", msg["survivor_id"])
+            return {"ok": True}
+        if t == "handled":
+            sid = msg.get("survivor_id", "")
+            if self.registry.get(sid) is None: return {"ok": False, "error": "unknown survivor"}
+            secs = float(self.cfg["survivors"].get("handled_s", 60))
+            self.handled[sid] = now + secs
+            self.registry.update(sid, lambda s: setattr(s, "handled_at", utc_now()))
+            self.bus.publish("handled", {"survivor_id": sid, "for_s": secs})
             return {"ok": True}
         if t == "sim":
             if not self.cfg["server"].get("test_controls", False):
