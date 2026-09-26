@@ -6,16 +6,16 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
-## L – Live   (phase 2; updated —, branch agent/live @ —)
-Done (on main):
-Doing now:
-Next:
-Blocked on:
-Needs Matthew: (exact steps + minutes)
-Requests for R:
-Edits to files I don't own:
-Contract changes:
-Numbers measured (live):
+## L – Live   (phase 2; updated 17:22 EDT, branch agent/robot @ pending merge)
+Done (on my branch, not merged yet): authenticated HTTPS ingest client with durable event IDs; Vultr FastAPI ingest service with bearer authentication, strict validation, idempotent Mongo persistence, health endpoint, Docker/Caddy deployment files, and mock queue/API tests.
+Doing now: local full-suite verification.
+Next: authorized Atlas/Vultr deployment and offline → reconnect → Mongo acceptance run.
+Blocked on: no Atlas account/database user, Vultr account/paid VM approval, DNS hostname, service-side Mongo URI, or ingest token in this environment.
+Needs Matthew: approve a Vultr VM and provide a DNS hostname, then create the Atlas project/database user and provision the server-only `MONGODB_URI` plus the `INGEST_TOKEN` (about 20 minutes excluding account approval). Do not send secrets in chat.
+Requests for R: None.
+Edits to files I don't own: config/profiles/base.yaml, README.md, contracts, and cloud guide for the ingest contract/deployment guide.
+Contract changes: sightings and telemetry rows now have durable `event_id` fields assigned by Outbox before disk enqueue; `sync.target` selects default ingest/direct-Mongo/local-only behavior. The production Pi/station target is `ingest`; no Tiger target is configured.
+Numbers measured (live): no live cloud measurement claimed; local ingest/outbox tests pass.
 
 ---
 

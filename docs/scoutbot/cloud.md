@@ -1,49 +1,67 @@
-# Cloud and Talk
+# Cloud, talk, and Mongo ingest
 
-## What works
+Gemini and ElevenLabs remain independent optional services. This guide covers the only cloud database path: MongoDB Atlas behind the authenticated Vultr ingest service.
 
-- Empty, quoted, or whitespace-only optional environment values are treated as not set.
-- Gemini scene reports keep the frozen `SceneReport` schema, use JPEG quality 70, retry server overloads, and reuse a client per API key.
-- Gemini, Ollama, and canned replies route through a three-failure, 30-second circuit breaker. Triage extracts facts and applies local preliminary rules.
-- Talk uses the configured history limit and v1/v2 prompts. The v2 prompt enforces short, calm replies with one question.
-- All Gemini, Ollama, and canned replies pass a safety filter; promises of rescue/timing and unsafe medical instructions are replaced with a calm fallback question.
-- ElevenLabs automatically falls back to local speech. Local speech supports macOS `say`, Windows PowerShell SpeechSynthesizer, and Linux/Pi `espeak-ng` or `espeak`. Windows ElevenLabs audio uses standard-library WAV wrapping.
-- Sync resolves `sync.sinks: auto` from non-empty MongoDB/Tiger environment values. Mongo creates the required indexes and Tiger adds `sslmode=require` when missing.
+## Local-first behavior
 
-## How to run
+`data/survivors.jsonl` remains the canonical local record. Per-sink outbox files hold survivor updates, sightings, and telemetry until the server acknowledges them. While offline, no upload is attempted; reconnect retries begin at 2 seconds and back off to `sync.backoff_max_s`. A failed acknowledgement leaves the row on disk. Each sighting and telemetry row has a durable `event_id`, so a retry after a successful write is harmless.
+
+## Configuration and switching
+
+All variable values are secrets or deployment-specific; only their names are listed here.
+
+- Pi/base-station Vultr mode: `INGEST_URL`, `INGEST_TOKEN`; leave `MONGODB_URI` unset.
+- Vultr service environment: `INGEST_HOSTNAME`, `INGEST_TOKEN`, `MONGODB_URI`.
+- Direct local-development fallback only: set `sync.target: mongo` and `MONGODB_URI`; do not use this mode on a Pi or responder station that will leave your private network.
+- Local-only mode: set `sync.target: none` or `sync.sinks: []`.
+- `sync.target: ingest` is the default. `sync.target: auto` prefers ingest when both client variables exist, then direct Mongo. Tiger Data is not a configured target.
+
+Check a configured client without writing data:
 
 ```sh
-python -m scoutbot.tools.ollama_check
-python -m scoutbot.tools.talk_check --model ollama
-python -m scoutbot.tools.voice_check
-python -m scoutbot.tools.sync_check --sink both
+python -m scoutbot.tools.sync_check --sink ingest
+python -m scoutbot.tools.sync_check --sink mongo  # direct development fallback only
 ```
 
-For Gemini scene use `python -m scoutbot --profile mac`, then watch the dashboard Scene values. For an offline router check, use the dashboard offline toggle with a demo survivor. The simulator remains key-free.
+## MongoDB Atlas setup
 
-## Measurements
+1. Create an Atlas project and a least-privilege database user for database `scoutbot`.
+2. Create the cluster and obtain its application connection string for the Vultr server only.
+3. Add the Vultr VM's static public IPv4 address to Atlas network access. Do not add broad public access or Pi/station addresses.
+4. Set `MONGODB_URI` only in the Vultr service environment. The service creates survivor, event-id, time, and survivor/time indexes on startup.
+5. Verify from the Vultr VM with `docker compose exec ingest python -c "from scoutbot.ingest.repository import MongoRepository; import os; MongoRepository(os.environ['MONGODB_URI']).health()"`.
 
-| Check | Result | Notes |
-| --- | --- | --- |
-| Cloud unit tests | 21 passed in 0.63 s | Router, triage, worker, outbox, isolation, WAV, auto-sink and Tiger TLS checks. |
-| B1 integration | 99 passed in 3.15 s | 20-second demo sim created 1 survivor, 0 contacts, 0 watchdog trips. |
-| Gemini scene p50/p95 | Not measured | Requires an authorized live API run. |
-| Ollama cold/warm | Not measured | Run `ollama_check` on the intended laptop. |
-| ElevenLabs first audio | Not measured | Requires a live key and installed player. |
-| Mongo/Tiger flush | Not measured | Requires real cloud database URLs. |
+Collections are `survivors` (version-gated `_id` upserts), `sightings`, and `telemetry`. Event collections use unique `event_id` indexes; the service also records server-side `received_at` metadata.
 
-## Demo queries
+## Vultr deployment
 
-Tiger survivors: `SELECT triage, last_seen, x_cm, y_cm FROM survivors ORDER BY triage, last_seen DESC;`
+Prerequisites needing user action: a Vultr account and approved paid VM, a DNS hostname, a MongoDB Atlas project/database user, a generated ingest bearer token, and the service-side Mongo URI. No resource is created by this repository.
 
-Tiger sightings: `SELECT survivor_id, time_bucket('10 seconds', time), count(*), avg(x_cm), avg(y_cm) FROM sightings GROUP BY 1,2 ORDER BY 2;`
+1. Create a small supported Linux VM with a static IPv4 address. Open only TCP 80 and 443 in the Vultr firewall; use SSH administration controls appropriate to your team.
+2. Point the chosen DNS hostname at that static address.
+3. Install Docker Engine and Docker Compose on the VM, clone this repository, then enter `deploy/vultr/`.
+4. Create a server-only `.env` beside `compose.yaml` with the variables `INGEST_HOSTNAME`, `INGEST_TOKEN`, and `MONGODB_URI`. Set restrictive file permissions and never copy it to the Pi/station or commit it.
+5. Start and update with `docker compose up -d --build`. Caddy obtains and renews TLS certificates and proxies only to the internal ingest container.
+6. Verify externally with `curl -fsS https://<hostname>/healthz`; use `docker compose logs --tail=100 ingest` for failures. A 503 means the service cannot reach Atlas.
+7. Roll back by redeploying the previous image/revision, then check `/healthz`. The client outbox retains undelivered rows throughout an outage.
 
-Tiger path: `SELECT time, action, rule, x_cm, y_cm FROM telemetry WHERE time > now() - interval '5 minutes' ORDER BY time;`
+The service exposes only `GET /healthz` and authenticated `POST /v1/ingest`. It uses constant-time bearer comparison, strict Pydantic request models, a 1 MB request limit, maximum 500 items per request, no API docs endpoint, and no Mongo credential on the clients. Run it as the non-root image user; Caddy is the only public-facing container.
 
-Mongo survivors: `db.survivors.find({}, {triage:1,last_seen:1,pose:1}).sort({'triage.category':1,last_seen:-1})`
+## Test and acceptance commands
 
-Mongo sightings: `db.sightings.aggregate([{$group:{_id:'$survivor_id',count:{$sum:1},last:{$max:'$time'}}}])`
+```sh
+python -m pytest tests/test_outbox.py tests/test_ingest_client.py tests/test_ingest_api.py
+python -m pytest -q tests
+python -m scoutbot --profile sim --set sync.target=none --headless 20
+```
 
-## Known limits
+For an authorized integration run, start the local ingest container with a test Atlas database, run the first command with `INGEST_URL` and `INGEST_TOKEN`, then verify:
 
-Live Gemini, Ollama, ElevenLabs, MongoDB Atlas, and Tiger Data measurements are intentionally not fabricated. Run the matching checks with authorized services before a live demo. `main` now removes the profile-level empty sync-sink overrides, so configured automatic sinks can activate.
+1. Force offline and create a survivor plus telemetry; inspect that the ingest outbox has rows.
+2. Restore connectivity and wait for sync status `ok`.
+3. Query Atlas for one versioned survivor and the matching `event_id` documents.
+4. Repeat delivery/restart the client; the event counts must not increase.
+
+## Status and limits
+
+No live Atlas, Vultr, Gemini, or ElevenLabs measurement has been performed here. This work does not make the robot demo-ready. Physical Pi bring-up, account creation, DNS, paid-resource approval, secret provisioning, and live queue-to-Atlas acceptance evidence remain required.

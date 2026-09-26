@@ -14,13 +14,6 @@ def test_ingest_sink_requires_https_and_token():
 def test_ingest_sink_authenticates_and_requires_full_acknowledgement():
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["auth"] = request.headers["authorization"]
-        seen["body"] = request.json() if hasattr(request, "json") else None
-        return httpx.Response(200, json={"accepted": 1})
-
-    # httpx.Request intentionally has no .json(); decode the payload in this
-    # compatible handler while retaining MockTransport's request inspection.
     def json_handler(request: httpx.Request) -> httpx.Response:
         import json
         seen["auth"] = request.headers["authorization"]

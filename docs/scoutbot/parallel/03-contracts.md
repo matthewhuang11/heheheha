@@ -120,9 +120,9 @@ SyncWorker(cfg, shared, outbox).start()
 NetWorker(cfg, shared, bus).start()
 ```
 
-- **Row shapes.** `sightings`: `{time (ISO UTC), survivor_id, x_cm, y_cm, uncertainty_cm, source, confidence}`. `telemetry`: `{time, mode, action, rule, left_cm, center_cm, right_cm, internet, x_cm, y_cm}`.
+- **Row shapes.** `sightings`: `{event_id, time (ISO UTC), survivor_id, x_cm, y_cm, uncertainty_cm, source, confidence}`. `telemetry`: `{event_id, time, mode, action, rule, left_cm, center_cm, right_cm, internet, x_cm, y_cm}`. `Outbox.add_rows` assigns `event_id` before durable enqueue when the producer omits it; sinks must make duplicate event IDs harmless.
 - The Registry calls `outbox.put_survivor` and `add_rows("sightings")`. The runtime calls `add_rows("telemetry")` at `sync.telemetry_hz` (only when there are sinks).
-- Planned (B.P1): `scoutbot.sync.resolve_sinks(cfg) -> list[str]`, which turns `"auto"` into the sinks whose URL is set. C (or a B wiring edit) calls it where `Outbox` is created.
+- `scoutbot.sync.resolve_sinks(cfg) -> list[str]` resolves `sync.sinks: auto` through `sync.target`: `ingest` requires both `INGEST_URL` and `INGEST_TOKEN`; `mongo` is direct-development fallback; `none` stays local. `auto` prefers ingest, then direct Mongo. C calls it where `Outbox` is created.
 
 ## 7. Data models [C owns `scoutbot/types.py`]
 
@@ -160,6 +160,6 @@ Browser → robot (any message also counts as a heartbeat; the page sends `heart
 
 ## 9. Config and environment
 
-- `.env` keys: `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TALK_MODEL`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, `TIGER_DATABASE_URL`, `CAMERA_INDEX`, `SCOUTBOT_TOKEN`. B owns `.env.example`.
+- Pi/station `.env` keys include `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TALK_MODEL`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `INGEST_URL`, `INGEST_TOKEN`, `MONGODB_URI` (direct-development fallback only), `CAMERA_INDEX`, `SCOUTBOT_TOKEN`. The Vultr ingest server alone has its production `MONGODB_URI`; B owns `.env.example`.
 - Config sections by owner: see [01-shared-rules.md §2](01-shared-rules.md#shared-config-configprofilesbaseyaml).
 - `settings.load()` returns a plain dict with `cfg["profile"]` set. Code reads config at startup; there's no live reload.

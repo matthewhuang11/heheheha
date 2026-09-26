@@ -1,0 +1,4 @@
+{$INGEST_HOSTNAME} {
+    encode zstd gzip
+    reverse_proxy ingest:8080
+}

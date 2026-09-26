@@ -40,8 +40,8 @@ Put them in `.env` in this folder (setup creates it from `.env.example`). Never 
 | --- | --- | --- | --- |
 | `GEMINI_API_KEY` | Gemini scene descriptions, replies and triage | driving uses the sensors only; replies from Ollama or canned text | <https://aistudio.google.com/apikey> |
 | `ELEVENLABS_API_KEY` (+ `ELEVENLABS_VOICE_ID`) | natural voice | the computer's built-in voice | <https://elevenlabs.io/> |
-| `MONGODB_URI` | survivor records synced to MongoDB | saved on this computer only (`data/`) | <https://www.mongodb.com/atlas> |
-| `TIGER_DATABASE_URL` | sightings time series in Tiger Data | saved on this computer only | <https://www.tigerdata.com/> |
+| `INGEST_URL` + `INGEST_TOKEN` | HTTPS sync to the Vultr Mongo ingest service | saved locally then queued in `data/outbox/` | deployment owner |
+| `MONGODB_URI` | direct Mongo local-development fallback | saved locally then queued in `data/outbox/` | <https://www.mongodb.com/atlas> |
 | `CAMERA_INDEX` | picks a camera (0, 1, 2...) | auto / profile default | |
 | `SCOUTBOT_TOKEN` | a password for the dashboard (`/?token=...`) | no login (fine on your own Wi-Fi) | any long random text |
 
@@ -82,7 +82,7 @@ then use a phone hotspot for both.
 3. A person comes into view: YOLO box, the robot stops, a survivor pin on the map, a spoken greeting.
 4. Type (or say) "My leg is stuck, I can't move it": triage turns red, IMMEDIATE (trapped), preliminary; the reply is spoken.
 5. Toggle **Simulate offline**: replies now come from Ollama in the local voice; survivors are queued for sync.
-6. Toggle back online: MongoDB and Tiger chips go green.
+6. Toggle back online: the ingest sync chip drains its local queue.
 7. **Take control**, drive at a wall: the safety gate blocks it; let go and it stops; **STOP** works from every mode.
 
 Full checklist: [docs/scoutbot/parallel/40-integration-and-demo.md](docs/scoutbot/parallel/40-integration-and-demo.md).
