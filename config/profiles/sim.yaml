@@ -17,3 +17,5 @@ sim:
 server:
   host: 127.0.0.1
   open_browser: true
+survivors:
+  data_dir: data/sim        # keep simulated survivors out of the real (laptop / robot) records
