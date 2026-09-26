@@ -18,6 +18,9 @@ hw:
   tof_xshut: [4, 16, 20]    # only for distance: tof
   sensor_angles: [30, 0, -30]   # left, center, right sensor directions (deg, CCW +); used by the sim and the map (KI-39)
   sensor_beam_deg: 15       # full beam width of each distance sensor (HC-SR04 ~15 deg)
+  cliff: none               # downward floor sensor (KI-40): none | hcsr04 | tof. The sim uses its world's drops instead.
+  cliff_pins: {trig: 26, echo: 21, xshut: 7}   # PLACEHOLDERS: hcsr04 uses trig/echo (echo via divider), tof uses xshut
+  cliff_ahead_cm: 15        # how far ahead of the robot centre the floor sensor looks (sim)
 
 motion:                     # measured once on the real floor (spec 5.3)
   forward_cm_s: 30

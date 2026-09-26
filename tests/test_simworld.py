@@ -115,3 +115,34 @@ def test_sensor_angles_come_from_config():
     for _ in range(3): m.update(Pose(), (100, None, None))
     ox, oy = m.snapshot()["obstacles"][0]
     assert abs(ox) < 1 and oy > 100            # the left sensor at +90 deg puts the dot on +y
+
+def run_cliff(world_name, seconds=120, seed=1, use_cliff=True):
+    """Closed loop like run(), but feeding the downward sensor into the brain."""
+    w = World(CFG, world_name, seed=seed); ctrl = Controller(DEFAULT); gate = Gate(DEFAULT); ramp = Ramp(0.15); fuser = Fuser()
+    dt = 0.1; t = 0.0; scene = None; scene_at = None; actions = []
+    while t < seconds:
+        t += dt
+        if scene_at is None or t - scene_at >= 2.0: scene = w.scene_report(); scene_at = t
+        s = w.sensors(); s.updated_at = t
+        cliff = w.cliff() if use_cliff else None
+        dec = ctrl.step(s, fuser.fuse(scene, fresh_person(w.detections(t), t, t, 1.0)), scene_at, True, t, cliff=cliff)
+        L, C, R = dec.filtered.values()
+        res = gate.check(dec.action, Mode.AUTO, L, C, R, True, t, False)
+        out = ramp.set(*wheel_speeds(res.action, CFG), t); w.set_wheels(*out)
+        for _ in range(5): w.step(dt / 5)
+        if cliff is not None and cliff > DEFAULT.cliff_max: actions.append((dec.rule, dec.action.value))
+    return w, actions
+
+def test_cliff_sensor_stops_the_robot_at_a_drop():
+    """KI-40: the robot drives straight at an open stairwell. With the floor sensor it backs up (rule 2) and never goes
+    over the edge; without it, it drives in."""
+    w, acts = run_cliff("dropoff", use_cliff=True)
+    assert w.falls == 0 and any(r == 2 and a == "BACK_UP" for r, a in acts)
+    assert all(a in ("BACK_UP", "STOP") for _, a in acts)          # never forward while the sensor sees a drop
+    w2, _ = run_cliff("dropoff", seconds=30, use_cliff=False)
+    assert w2.falls > 0
+
+def test_no_drops_means_no_cliff_sensor():
+    assert World(CFG, "room_basic", seed=1).cliff() is None
+    w = World(CFG, "dropoff", seed=1); assert w.cliff() is not None and w.cliff() < 15
+    w.x = 300 - 10; assert w.cliff() == 999.0
