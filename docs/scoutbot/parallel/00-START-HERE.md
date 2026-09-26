@@ -1,5 +1,8 @@
 # Scoutbot three-agent build: start here
 
+> **Phase 2 (two agents, from 2026-09-26 ~13:30 EDT): read [50-two-agent-phase.md](50-two-agent-phase.md) first.** It replaces the A/B/C split below with L (Live demo) and R (Robot). Everything else in this folder still applies.
+
+
 Date: 2026-09-26. Repo: `heheheheha` (GitHub `origin`). Starting point: `main` at `705ccab` or later.
 
 Scoutbot is a small disaster-response robot. It drives itself with a Raspberry Pi 4, a camera and distance sensors, finds people, and lets a responder see, drive and talk to survivors from a laptop dashboard. Gemini, ElevenLabs and survivor databases are used when there is internet; Ollama on the laptop takes over when there isn't.

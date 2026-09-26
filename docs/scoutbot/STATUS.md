@@ -6,6 +6,35 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
+## L – Live   (phase 2; updated —, branch agent/live @ —)
+Done (on main):
+Doing now:
+Next:
+Blocked on:
+Needs Matthew: (exact steps + minutes)
+Requests for R:
+Edits to files I don't own:
+Contract changes:
+Numbers measured (live):
+
+---
+
+## R – Robot   (phase 2; updated —, branch agent/robot @ —)
+Camera: IN USE by R (write CAMERA FREE here when done with R1-R4)
+Done (on main):
+Doing now:
+Next:
+Blocked on:
+Needs Matthew: (exact steps + minutes)
+Requests for L:
+Edits to files I don't own:
+Contract changes:
+Numbers measured:
+
+---
+
+# Phase 1 history (A/B/C) - do not edit below
+
 ## A – Robot   (updated 2026-09-26 12:41 EDT, branch agent/robot @ fc3094f)
 Done (on main): A1 / KI-01 motor_check fix, fake-motor regression test, and robot run notes.
 Done (on my branch, not merged yet): A2 camera auto-detect; A3/A5 YOLO benchmark, optional requirements, NCNN export and folder loading; KI-04 sensor no-echo reporting; KI-06 repeat-safe Pi setup; static motor-apply safety proof. Merged origin/main through C13 (continue-search).
