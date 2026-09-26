@@ -53,3 +53,37 @@ def test_five_minute_auto_run_has_zero_wall_contacts():
             w, moved, _ = run(name, seed=seed)
             assert w.contacts == 0, f"{name} seed {seed}: {w.contacts} contacts"
             assert moved > 150, f"{name}: robot barely moved ({moved:.0f} cm)"
+
+def test_fake_people_false_hides_survivors():
+    cfg = settings.load("sim", ["sim.fake_people=false"], load_env=False)
+    w = World(cfg, "room_basic", seed=1); w.x, w.y, w.h = 400.0, 100.0, 0.0
+    assert w.visible_survivors() and w.detections(0.0) == []
+    assert w.scene_report().people.visible is False
+
+def count_run(world_name, seed, seconds=300):
+    """Closed-loop run that also feeds the survivor registry: returns (people seen within 2.5 m, survivor records)."""
+    import tempfile
+    from scoutbot.survivors.registry import Registry
+    w = World(CFG, world_name, seed=seed); ctrl = Controller(DEFAULT); gate = Gate(DEFAULT); ramp = Ramp(0.15); fuser = Fuser()
+    pose = DeadReckoning(CFG, start=w.pose()); reg = Registry(CFG, data_dir=tempfile.mkdtemp())
+    dt = 0.1; t = 0.0; scene = None; scene_at = None; seen = set()
+    while t < seconds:
+        t += dt
+        if scene_at is None or t - scene_at >= 2.0: scene = w.scene_report(); scene_at = t
+        s = w.sensors(); s.updated_at = t; dets = w.detections(t)
+        seen |= {v["i"] for v in w.visible_survivors() if v["dist"] < 250}
+        dec = ctrl.step(s, fuser.fuse(scene, fresh_person(dets, t, t, 1.0)), scene_at, True, t)
+        L, C, R = dec.filtered.values()
+        out = ramp.set(*wheel_speeds(gate.check(dec.action, Mode.AUTO, L, C, R, True, t, False).action, CFG), t); w.set_wheels(*out)
+        for _ in range(5): w.step(dt / 5)
+        pose.update(out, t); used = set()
+        for d in dets:
+            sv, _ = reg.sighting(d, pose.pose(), pose.odometer, None, exclude=used)
+            if sv: used.add(sv.id)
+    return len(seen), len(reg.all())
+
+def test_one_survivor_record_per_person():
+    # Full sweep (5 seeds x 3 worlds) is in docs/scoutbot/station.md: 13/15 exact with merge_cm 100. These are fast regressions.
+    for name, seed in (("room_basic", 2), ("rubble", 3), ("demo", 5)):
+        seen, records = count_run(name, seed)
+        assert records == seen, f"{name} seed {seed}: saw {seen} people, made {records} records"

@@ -31,8 +31,8 @@ main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.
 .track{height:10px;background:#0b0f14;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
 .fill{height:100%;background:var(--g);transition:width .15s}
 .v{text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
-.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,52px);gap:6px;justify-content:center;margin-top:8px;user-select:none}
-.pad button{font-size:20px;padding:0}
+.pad{display:grid;grid-template-columns:repeat(3,72px);grid-template-rows:repeat(2,64px);gap:8px;justify-content:center;margin-top:8px;user-select:none;-webkit-user-select:none;touch-action:none}
+.pad button{font-size:22px;padding:0;touch-action:none}
 .pad .held{background:#1f6feb;border-color:#58a6ff}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}.kv b{color:var(--mut);font-weight:500}
 #map{width:100%;aspect-ratio:1/1;background:#0b0f14;border-radius:6px;display:block}
@@ -57,24 +57,32 @@ input[type=text]{flex:1;background:#0b0f14;color:var(--tx);border:1px solid var(
 .srow2{display:grid;grid-template-columns:52px 1fr 60px 62px;gap:8px;align-items:center;margin:5px 0;font-size:12px}
 .srow2 input[type=range]{width:100%}
 #down{position:fixed;inset:0;background:rgba(13,17,23,.82);display:none;align-items:center;justify-content:center;z-index:20;font-size:20px;color:#ffb3ae;text-align:center;padding:20px}
+#offBanner{display:none;background:#3a2f12;border-bottom:1px solid var(--y);color:#f2cc60;padding:6px 16px;font-size:13px}
+.mapbar{display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
+@media(max-width:800px){
+  header{padding:8px 10px;gap:6px}h1{font-size:14px}#estop{padding:10px 26px;font-size:16px}
+  header .chip:not(.mode){font-size:11px;padding:1px 7px}
+  main{padding:10px}.act{font-size:24px}
+}
 .muted{color:var(--mut)}
 .trace{display:grid;gap:2px;margin-top:6px;font-size:11.5px}
 .trace div{color:var(--mut);padding:1px 6px;border-radius:4px}.trace .fired{color:var(--tx);background:#1f2a3a;outline:1px solid var(--b)}
 details summary{cursor:pointer;color:var(--mut);font-size:12px}
 </style></head>
 <body>
-<div id="down">Robot link lost — motors stopped.<br><span class="muted" style="font-size:14px">Reconnecting…</span></div>
+<div id="down" role="alert">Robot link lost: motors stopped.<br><span class="muted" style="font-size:14px">Reconnecting…</span></div>
 <header>
   <h1>Scoutbot · Responder</h1>
   <span id="mode" class="chip mode">—</span>
-  <button id="estop" title="Space bar">STOP</button>
-  <button id="bAuto">Start auto</button>
-  <button id="bManual">Take control</button>
+  <button id="estop" title="Space bar" aria-label="Emergency stop">STOP</button>
+  <button id="bAuto" aria-label="Start autonomous search">Start auto</button>
+  <button id="bManual" aria-label="Take manual control">Take control</button>
   <span class="spacer"></span>
-  <span id="cLink" class="chip">link</span><span id="cNet" class="chip">internet</span><span id="cGem" class="chip">Gemini</span>
+  <span id="cLink" class="chip">link</span><span id="cNet" class="chip">internet</span><span id="cScene" class="chip">Gemini scene</span><span id="cGem" class="chip">Gemini talk</span>
   <span id="cOll" class="chip">Ollama</span><span id="cYolo" class="chip">YOLO</span><span id="cVoice" class="chip">voice</span>
   <span id="cMongo" class="chip" hidden>Mongo</span><span id="cTiger" class="chip" hidden>Tiger</span>
 </header>
+<div id="offBanner" role="status"></div>
 <main>
 <section id="colL">
   <div class="card">
@@ -93,7 +101,7 @@ details summary{cursor:pointer;color:var(--mut);font-size:12px}
     <h2><span>Manual drive</span><span class="muted">hold W A S D / arrows · Shift = slow · Space = STOP</span></h2>
     <div class="pad">
       <span></span><button data-a="FORWARD" title="W">▲</button><span></span>
-      <button data-a="TURN_LEFT" title="A">◀</button><button data-a="BACK_UP" title="S">▼</button><button data-a="TURN_RIGHT" title="D">▶</button>
+      <button data-a="TURN_LEFT" title="A" aria-label="Turn left">◀</button><button data-a="BACK_UP" title="S" aria-label="Back up">▼</button><button data-a="TURN_RIGHT" title="D" aria-label="Turn right">▶</button>
     </div>
     <div style="text-align:center;margin-top:8px"><label class="muted"><input type="checkbox" id="slow"> slow forward</label></div>
     <div id="driveHint" class="muted" style="text-align:center;margin-top:4px;font-size:12px"></div>
@@ -102,10 +110,11 @@ details summary{cursor:pointer;color:var(--mut);font-size:12px}
 <section id="colM">
   <div class="card">
     <h2><span>Map <span class="muted">(approximate)</span></span><span id="mapInfo" class="muted"></span></h2>
+    <div class="mapbar"><button id="mapMode" aria-label="Switch map view">Fit all</button><span class="muted">click a survivor pin to open it</span></div>
     <canvas id="map" width="700" height="700"></canvas>
     <div class="legend">
       <span><span class="dot" style="background:var(--b)"></span>robot (estimate)</span>
-      <span><span class="dot" style="background:#6e768166"></span>uncertainty</span>
+      <span><span class="dot" style="background:#6e768166"></span>drift circle (could be anywhere inside)</span>
       <span><span class="dot" style="background:#8b949e"></span>obstacle readings</span>
       <span id="lgTrue" hidden><span class="dot" style="background:#3fb95066"></span>true position (sim)</span>
       <span><span class="dot" style="background:var(--r)"></span>survivor (triage color)</span>
@@ -123,7 +132,7 @@ details summary{cursor:pointer;color:var(--mut);font-size:12px}
 </section>
 <section id="colR">
   <div class="card">
-    <h2><span>Survivors</span><span id="sCount" class="muted"></span></h2>
+    <h2><span>Survivors <span id="sCount" class="muted"></span></span><span><button id="bExpJson" aria-label="Export survivors as JSON">JSON</button> <button id="bExpCsv" aria-label="Export survivors as CSV">CSV</button></span></h2>
     <div class="slist" id="slist"><div class="muted">None found yet.</div></div>
   </div>
   <div class="card" id="scard" hidden>
@@ -156,6 +165,8 @@ function log(text, cls) {
   $("log").prepend(d); while ($("log").children.length > 80) $("log").lastChild.remove();
 }
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+let RTT = null;
+setInterval(() => send({ type: "ping", t: performance.now() }), 2000);
 
 function connect() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -167,6 +178,7 @@ function connect() {
     if (m.type === "hello") { HELLO = m; setupHello(); }
     else if (m.type === "state") { S = m; render(); }
     else if (m.type === "event") onEvent(m);
+    else if (m.type === "reply" && m.for === "ping" && m.t != null) RTT = performance.now() - m.t;
     else if (m.type === "reply" && m.ok === false) log(`${m.for}: ${m.error}`, "bad");
   };
 }
@@ -213,27 +225,46 @@ function render() {
   $("trace").innerHTML = (s.trace || []).map(t => `<div class="${t.fired ? "fired" : ""}">${t.rule}. ${t.name}${t.applicable ? "" : " (skipped)"} — ${escapeHtml(t.evidence || "")}</div>`).join("");
   // chips
   const la = s.deadman.link_age;
-  chip($("cLink"), `link ${la == null ? "—" : la.toFixed(1) + "s"}`, la != null && la < 0.5 ? "ok" : "bad");
+  chip($("cLink"), `link ${RTT == null ? (la == null ? "—" : la.toFixed(1) + "s") : Math.round(RTT) + " ms"}`, la != null && la < 0.5 ? "ok" : "bad");
+  $("cLink").title = `round trip ${RTT == null ? "—" : Math.round(RTT) + " ms"} · last message ${la == null ? "—" : la.toFixed(2) + " s"} ago`;
   chip($("cNet"), s.online ? "internet" : s.force_offline ? "offline (sim)" : "offline", s.online ? "ok" : "warn");
+  $("cNet").title = s.online ? "internet reachable" : s.force_offline ? "Simulate offline is on (test controls)" : "no internet";
   const g = s.services.gemini || "", o = s.services.ollama || "";
-  chip($("cGem"), "Gemini" + (s.online ? "" : " (offline)"), s.online ? svcClass(g) : "warn"); $("cGem").title = g + " · scene: " + (s.vlm.error || "ok");
-  chip($("cOll"), "Ollama", svcClass(o)); $("cOll").title = o;
-  chip($("cYolo"), `YOLO ${s.yolo.fps ? s.yolo.fps + " fps" : ""}`, svcClass(s.yolo.status)); $("cYolo").title = s.yolo.status;
+  // KI-44: the driving camera (scene) and the survivor talk are separate Gemini uses
+  const prov = s.services.gemini_scene || "gemini";
+  let sceneTxt, sceneCls, sceneTip;
+  if (prov !== "gemini") { sceneTxt = `scene: ${prov}`; sceneCls = "info"; sceneTip = `scene reports come from the ${prov} provider (no Gemini calls)`; }
+  else if (!s.online) { sceneTxt = "Gemini scene (offline)"; sceneCls = "warn"; sceneTip = "no internet: driving on sensors only"; }
+  else if (s.vlm.failures >= 3) { sceneTxt = "Gemini scene ✗"; sceneCls = "bad"; sceneTip = s.vlm.error || "failing"; }
+  else if (s.vlm.error) { sceneTxt = "Gemini scene !"; sceneCls = "warn"; sceneTip = s.vlm.error; }
+  else if (s.vlm.calls) { sceneTxt = "Gemini scene ✓"; sceneCls = "ok"; sceneTip = `${s.vlm.calls} calls, last ${s.vlm.latency}s`; }
+  else { sceneTxt = "Gemini scene"; sceneCls = "info"; sceneTip = "waiting for the first camera frame / call"; }
+  chip($("cScene"), sceneTxt, sceneCls); $("cScene").title = sceneTip;
+  const gc = s.online ? svcClass(g) : "warn";
+  chip($("cGem"), "Gemini talk" + (!s.online ? " (offline)" : gc === "ok" ? " ✓" : gc === "bad" ? " ✗" : ""), gc); $("cGem").title = g || "not used yet";
+  chip($("cOll"), "Ollama", svcClass(o)); $("cOll").title = o || "not used yet";
+  chip($("cYolo"), `YOLO ${s.yolo.fps ? s.yolo.fps + " fps" : ""}`, svcClass(s.yolo.status)); $("cYolo").title = s.yolo.status || "";
   chip($("cVoice"), "voice", svcClass(s.services.voice)); $("cVoice").title = s.services.voice || "";
   for (const [k, el] of [["mongo", $("cMongo")], ["tiger", $("cTiger")]]) {
     const st = s.sync[k]; el.hidden = !st; if (!st) continue;
     chip(el, `${k === "mongo" ? "Mongo" : "Tiger"}${st.queued ? " · " + st.queued + " queued" : ""}`, st.state === "ok" ? "ok" : st.state.startsWith("offline") ? "warn" : st.state === "error" || st.state === "not configured" ? "bad" : "info");
     el.title = `${st.state}${st.error ? ": " + st.error : ""}${st.last_ok ? " · last ok " + st.last_ok : ""}`;
   }
+  // offline banner
+  const queued = Object.entries(s.sync || {}).filter(([, v]) => v.queued).map(([k, v]) => `${k === "mongo" ? "Mongo" : k === "tiger" ? "Tiger" : k} ${v.queued}`);
+  $("offBanner").style.display = s.online ? "none" : "block";
+  if (!s.online) $("offBanner").textContent = `No internet${s.force_offline ? " (simulated)" : ""}: replies come from Ollama, the local voice speaks, `
+    + (queued.length ? `survivors queued for sync (${queued.join(", ")}).` : "survivors are saved here and sync when the internet returns.");
   $("offline").checked = s.force_offline;
   $("camInfo").textContent = s.camera.healthy ? "" : "camera: " + (s.camera.reasons || []).join(", ");
   // status
   const sc = s.scene;
   $("status").innerHTML = [
-    ["Scene (Gemini)", sc ? `${sc.path_ahead}, ${sc.terrain}${sc.hazards.length ? ", hazards: " + sc.hazards.map(h => h.type + " " + h.where + "/" + h.distance).join(", ") : ""} · ${s.scene_age}s old` : "no report yet"],
+    ["Scene", sc ? escapeHtml(`${sc.path_ahead}, ${sc.terrain}${sc.hazards.length ? ", hazards: " + sc.hazards.map(h => h.type + " " + h.where + "/" + h.distance).join(", ") : ""}`) + ` · ${s.scene_age}s old` : "no report yet"],
     ["Scene notes", sc ? escapeHtml(sc.notes) : "—"],
     ["People", s.detections.length ? s.detections.map(d => `${d.where}/${d.distance} (${d.source} ${Math.round(d.confidence * 100)}%)`).join(", ") : "none"],
     ["Pose (estimate)", `(${s.pose.x_cm.toFixed(0)}, ${s.pose.y_cm.toFixed(0)}) cm, ${s.pose.heading_deg.toFixed(0)}° ± ${s.pose.uncertainty_cm.toFixed(0)} cm`],
+    ["Link", `round trip ${RTT == null ? "—" : Math.round(RTT) + " ms"}`],
     ["Dead-man", `motor cmd ${s.deadman.motor_age == null ? "—" : s.deadman.motor_age.toFixed(2) + "s ago"} · link timeout ${s.deadman.link_timeout}s · watchdog trips ${s.deadman.trips}`],
     ["Gemini scene", `${s.vlm.calls} calls, last ${s.vlm.latency ?? "—"}s${s.vlm.error ? " · " + escapeHtml(s.vlm.error.slice(0, 80)) : ""}`],
     ...(s.true_pose ? [["Sim", `wall contacts ${s.sim_contacts}`]] : []),
@@ -245,13 +276,37 @@ function render() {
 
 function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
+const RANK = { IMMEDIATE: 0, DELAYED: 1, MINOR: 2, UNKNOWN: 3 };
+function sortedSurvivors() {
+  return [...S.survivors].sort((a, b) => ((RANK[a.category] ?? 4) - (RANK[b.category] ?? 4)) || (b.last_seen > a.last_seen ? 1 : b.last_seen < a.last_seen ? -1 : 0));
+}
 function renderSurvivors() {
-  const list = S.survivors; $("sCount").textContent = list.length ? list.length + " found" : "";
+  const list = sortedSurvivors(); $("sCount").textContent = list.length ? "· " + list.length + " found" : "";
   if (!list.length) return;
-  const html = list.map(v => `<div class="srow ${v.id === sel ? "sel" : ""}" data-id="${v.id}"><span class="tag ${v.category || "NONE"}">${v.category || "…"}</span><b>${v.id}</b><span class="muted" style="font-size:12px">${v.sightings} sightings · ${new Date(v.last_seen).toLocaleTimeString()}</span></div>`).join("");
+  const html = list.map(v => `<div class="srow ${v.id === sel ? "sel" : ""}" data-id="${escapeHtml(v.id)}" role="button" tabindex="0"><span class="tag ${v.category || "NONE"}">${v.category || "…"}</span><b>${escapeHtml(v.id)}</b><span class="muted" style="font-size:12px">${v.sightings} sightings · ${v.messages} msgs · ${new Date(v.last_seen).toLocaleTimeString()}</span></div>`).join("");
   if ($("slist").dataset.h !== html) { $("slist").innerHTML = html; $("slist").dataset.h = html; }
 }
 $("slist").onclick = e => { const r = e.target.closest(".srow"); if (r) select(r.dataset.id); };
+$("slist").onkeydown = e => { const r = e.target.closest(".srow"); if (r && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(r.dataset.id); } };
+
+// ---- export (client-side, from /api/survivors) ----
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+async function exportSurvivors(kind) {
+  const r = await fetch(q("/api/survivors")); if (!r.ok) { log("export failed", "bad"); return; }
+  const all = await r.json(); const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  if (kind === "json") { download(`survivors-${stamp}.json`, JSON.stringify(all, null, 2), "application/json"); return; }
+  const cell = v => { const t = String(v ?? ""); return /[",\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const head = ["id", "category", "rule", "x_cm", "y_cm", "uncertainty_cm", "sightings", "first_seen", "last_seen", "summary", "last_5_messages"];
+  const rows = all.map(s => [s.id, s.triage ? s.triage.category : "", s.triage ? s.triage.rule : "", s.pose.x_cm, s.pose.y_cm, s.pose.uncertainty_cm,
+    s.sightings, s.first_seen, s.last_seen, s.triage ? s.triage.facts.summary : "",
+    s.chat.slice(-5).map(m => `${m.role}: ${m.text}`).join(" | ")].map(cell).join(","));
+  download(`survivors-${stamp}.csv`, [head.join(","), ...rows].join("\r\n"), "text/csv");
+}
+$("bExpJson").onclick = () => exportSurvivors("json");
+$("bExpCsv").onclick = () => exportSurvivors("csv");
 
 async function select(id) {
   sel = id; $("scard").hidden = false; await loadSurvivor();
@@ -331,6 +386,14 @@ function drawOverlay() {
 
 // ---- map ----
 let MAP = null;
+let FOLLOW = false, PINS = [];
+$("mapMode").onclick = () => { FOLLOW = !FOLLOW; $("mapMode").textContent = FOLLOW ? "Follow robot" : "Fit all"; drawMap(); };
+$("map").addEventListener("click", e => {
+  const c = $("map"), r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * c.width / r.width, my = (e.clientY - r.top) * c.height / r.height;
+  let best = null, bd = 18 * c.width / r.width;
+  for (const p of PINS) { const d = Math.hypot(p.a - mx, p.b - my); if (d < bd) { bd = d; best = p.id; } }
+  if (best) select(best);
+});
 async function pollMap() { try { const r = await fetch(q("/api/map")); if (r.ok) MAP = await r.json(); } catch (e) {} drawMap(); }
 setInterval(pollMap, 1000);
 const TRI = { IMMEDIATE: "#f85149", DELAYED: "#d29922", MINOR: "#3fb950", UNKNOWN: "#8b949e" };
@@ -339,7 +402,8 @@ function drawMap() {
   const c = $("map"), x = c.getContext("2d"), W = c.width, H = c.height; x.clearRect(0, 0, W, H);
   const pts = [...MAP.trail, ...MAP.obstacles, [S.pose.x_cm, S.pose.y_cm], ...S.survivors.map(s => [s.x, s.y])];
   let minx, maxx, miny, maxy;
-  if (MAP.world) { minx = 0; miny = 0; maxx = MAP.world.size[0]; maxy = MAP.world.size[1]; }
+  if (FOLLOW) { minx = S.pose.x_cm - 250; maxx = S.pose.x_cm + 250; miny = S.pose.y_cm - 250; maxy = S.pose.y_cm + 250; }
+  else if (MAP.world) { minx = 0; miny = 0; maxx = MAP.world.size[0]; maxy = MAP.world.size[1]; }
   else { minx = Math.min(...pts.map(p => p[0])) - 100; maxx = Math.max(...pts.map(p => p[0])) + 100; miny = Math.min(...pts.map(p => p[1])) - 100; maxy = Math.max(...pts.map(p => p[1])) + 100; }
   const span = Math.max(maxx - minx, maxy - miny, 300), k = (W - 30) / span;
   const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
@@ -357,8 +421,10 @@ function drawMap() {
   }
   x.fillStyle = "#8b949e"; for (const o of MAP.obstacles) { const [a, b] = T(o[0], o[1]); x.fillRect(a - 1.5, b - 1.5, 3, 3); }
   x.strokeStyle = "#58a6ff99"; x.lineWidth = 2; x.beginPath(); MAP.trail.forEach((p, i) => { const [a, b] = T(p[0], p[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke();
+  PINS = [];
   for (const s of S.survivors) {
     const [a, b] = T(s.x, s.y), col = TRI[s.category] || "#8b949e";
+    PINS.push({ id: s.id, a, b });
     x.fillStyle = col + "22"; x.beginPath(); x.arc(a, b, Math.max(6, s.u * k), 0, 7); x.fill();
     x.fillStyle = col; x.beginPath(); x.arc(a, b, s.id === sel ? 9 : 7, 0, 7); x.fill();
     x.fillStyle = "#e6edf3"; x.font = "bold 12px system-ui"; x.fillText(s.id, a + 10, b - 8);
@@ -366,8 +432,13 @@ function drawMap() {
   if (S.true_pose) { const [a, b] = T(S.true_pose.x_cm, S.true_pose.y_cm); x.fillStyle = "#3fb95088"; x.beginPath(); x.arc(a, b, 7, 0, 7); x.fill(); }
   const [ra, rb] = T(S.pose.x_cm, S.pose.y_cm), hd = S.pose.heading_deg * Math.PI / 180;
   x.fillStyle = "#6e768133"; x.beginPath(); x.arc(ra, rb, S.pose.uncertainty_cm * k, 0, 7); x.fill();
+  if (S.pose.uncertainty_cm * k > 30) { x.fillStyle = "#8b949e"; x.font = "11px system-ui"; x.fillText(`drift ±${S.pose.uncertainty_cm.toFixed(0)} cm`, ra + 6, rb + S.pose.uncertainty_cm * k * 0.72 + 4); }
   x.fillStyle = "#58a6ff"; x.beginPath();
   x.moveTo(ra + 14 * Math.cos(hd), rb - 14 * Math.sin(hd)); x.lineTo(ra + 8 * Math.cos(hd + 2.5), rb - 8 * Math.sin(hd + 2.5)); x.lineTo(ra + 8 * Math.cos(hd - 2.5), rb - 8 * Math.sin(hd - 2.5)); x.fill();
+  // scale bar: 1 m
+  const sb = 100 * k; x.strokeStyle = "#e6edf3"; x.lineWidth = 2; x.beginPath(); x.moveTo(14, H - 16); x.lineTo(14 + sb, H - 16);
+  x.moveTo(14, H - 21); x.lineTo(14, H - 11); x.moveTo(14 + sb, H - 21); x.lineTo(14 + sb, H - 11); x.stroke();
+  x.fillStyle = "#e6edf3"; x.font = "12px system-ui"; x.fillText("1 m", 18 + sb, H - 12);
   $("mapInfo").textContent = `grid 1 m · drift ±${S.pose.uncertainty_cm.toFixed(0)} cm`;
 }
 connect();

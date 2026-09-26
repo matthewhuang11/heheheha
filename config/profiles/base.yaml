@@ -64,7 +64,7 @@ perception:
     max_age_s: 1.0
 
 survivors:
-  merge_cm: 100
+  merge_cm: 85              # base merge radius (cm); 85 = best in the sim sweep (docs/scoutbot/station.md)
   bearing_deg: 25
   dist_cm: {near: 70, mid: 200, far: 400}
   max_snapshots: 5
@@ -98,7 +98,7 @@ net:
 sim:
   world: room_basic
   noise: 0.05
-  fake_people: true
+  fake_people: true        # false: the sim camera sees nobody (tests the no-person paths)
 
 server:
   host: 127.0.0.1

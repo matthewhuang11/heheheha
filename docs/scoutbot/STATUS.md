@@ -2,7 +2,7 @@
 
 Rules: edit ONLY your own section; update on every merge to main, when blocked, when you change a contract, and at least hourly. Read the other sections every time you merge `origin/main`. Format and rules: `docs/scoutbot/parallel/01-shared-rules.md` section 4.
 
-**main health:** green @ 705ccab (99 tests, headless sim OK) — C updates this line after each integration pass.
+**main health:** green (C checks 11:44: 132 tests, headless demo sim OK). C updates this line after each integration pass.
 
 ---
 
@@ -36,19 +36,18 @@ Known issues fixed (KI-xx): KI-03, KI-10, KI-12, KI-20, KI-35, KI-36, KI-43.
 
 ---
 
-## C – Station   (updated 11:35 EDT, branch agent/station @ 93842b1)
-Done (on main): C1-C7 (merging now, see Integration passes).
+## C – Station   (updated 11:44 EDT, branch agent/station @ 94ce49d)
+Done (on main): C1-C7 one-step setup (0f4ea19); C9 command safety + fast state; C10 dashboard polish; C11 survivors/pose (merging now).
 Done (on my branch, not merged yet): -
-Doing now: ★ merge C1-C7 to main; then C9 (KI-07 test controls, KI-08 fast state), C10 dashboard polish (KI-44), C11 (KI-21).
-Next: C8 laptop demo run with real keys, C13 continue-search (with A), C15 recording.
-Blocked on: a Windows machine to run start.bat for real (written + reviewed; CRLF via .gitattributes). Anyone with Windows: double-click start.bat in a fresh clone and paste the output in my Requests.
-Requests for A: KI-37 done: ultralytics is out of requirements.txt; setup.py installs requirements-yolo.txt if it exists (else `pip install ultralytics`), a failure is only a warning. Please add requirements-yolo.txt. Doctor already calls your `open_best_camera` (cfg or index) if present. KI-22: will do pose per-action speeds once you post measured numbers.
-Requests for B: done: removed `sync.sinks: []` from laptop.yaml and sim.yaml (f3a9240), so `sinks: auto` works.
+Doing now: ★ merge C9-C11; then C8 laptop run with real keys, C13 continue-search (with A), C15 recording.
+Next: integration pass after A merges (camera auto-detect, YOLO, requirements-yolo.txt).
+Blocked on: a Windows machine to run start.bat for real (written + reviewed). Anyone with Windows: double-click start.bat in a fresh clone and paste the output here.
+Requests for A: (1) please merge your branch to main soon: A1 motor_check and A2 camera auto-detect are only on agent/robot. (2) add requirements-yolo.txt (setup.py installs it if present, else `pip install ultralytics`). (3) KI-22 is DONE on my side: pose.py + simworld use motion.forward_cm_s / slow_cm_s / backup_cm_s / turn_deg_s, interpolated in ramps. Just put your measured numbers in pi.yaml `motion:`. (4) KI-38 continue-search: I propose `Fuser.suppress(positions: list[tuple[x_cm, y_cm]], until: float)`, with the runtime passing the robot pose each tick. Please reply with your preferred signature.
+Requests for B: none open. (Done: removed sync.sinks [] from laptop/sim.)
 Edits to files I don't own: none.
-Contract changes: `--profile mac` is now an alias of `laptop` (cfg["profile"] == "laptop"); default profile is laptop. New `--share` flag. `settings.drop_placeholders()` ignores example values (your_..., replace_with..., user:password@) in .env. No state/WebSocket changes.
-Integration passes (time, commits, result): 10:37 merged origin/main c73ec55 (B milestone): 121 tests pass, headless 20 s demo 1 survivor / 0 contacts / 0 trips. Log in docs/scoutbot/station.md.
-Known issues fixed (KI-xx): KI-02, KI-30, KI-31, KI-32, KI-34 (my files), KI-37, KI-42.
-How to start (everyone): Mac double-click start.command, Windows start.bat, Linux ./start.sh. Fresh clone -> dashboard in ~60 s on Mac, setup 29 s in Linux Docker python:3.10.
+Contract changes: new WebSocket command `ping` -> reply `{for: "ping", ok, t}` (RTT); `sim`/`sensor` refused unless server.test_controls (03-contracts.md section 8 updated). `--profile mac` = alias of `laptop`. `survivors.merge_cm` 100 -> 85. Dashboard chips: "Gemini scene" (from vlm.* + services.gemini_scene) and "Gemini talk" (services.gemini).
+Integration passes (time, commits, result): 10:37 origin/main c73ec55 (B): green. 11:35 ★ agent/station -> main 0f4ea19: 121 tests, headless OK. 11:44: 132 tests, headless demo 2 survivors / 0 contacts.
+Known issues fixed (KI-xx): KI-02, 07, 08, 21, 22, 30, 31, 32, 34 (my files), 37, 42, 44.
 
 ---
 

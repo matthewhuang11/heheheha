@@ -18,17 +18,32 @@
 - **Windows safety**: every file my code reads/writes is utf-8, consoles use `errors="replace"`, no `±` in prints,
   `start.bat` is CRLF via `.gitattributes`.
 - Old `run_*.command` launchers use `.venv/bin/python` or `python3` (KI-02).
+- **Dashboard** (checked in headless Chromium, desktop 1400x900 and phone 390x844, no JS errors):
+  separate "Gemini scene" / "Gemini talk" chips (KI-44), offline banner with queued counts, round-trip time on the link chip,
+  STOP always in the sticky header, 72x64 px touch pad (`touch-action: none`), map fit-all / follow-robot, 1 m scale bar,
+  clickable survivor pins, survivors sorted red-first, JSON / CSV export (CSV opened and checked).
+- **Command safety (KI-07):** `sim` and `sensor` commands are refused unless `server.test_controls` (off on the Pi).
+- **Fast state (KI-08):** `Registry.summaries()` + 0.5 s cache, refreshed at once on survivor/chat/triage events.
+  `state()` stays under 5 ms with 20 survivors x 50 messages (test).
+- **`sim.fake_people: false`** makes the sim camera see nobody (KI-21).
 
-## How to run
+## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock, 5 seeds x 3 worlds)
 
-```bash
-./start.sh                  # menu (Mac: double-click start.command; Windows: start.bat)
-./start.sh sim --share      # simulator, open from a phone on the same Wi-Fi
-python -m scoutbot --profile laptop --share
-python -m scoutbot.tools.doctor
-python -m pytest -q tests
-python -m scoutbot --profile sim --set sim.world=demo --headless 20
-```
+People "seen" = came within 2.5 m in view. Records = entries the registry created.
+
+After KI-22 (the pose and the sim use per-action speeds: forward 30, slow 18, back-up 18 cm/s, turns 90 deg/s,
+interpolated during ramps), sweep of `survivors.merge_cm`:
+
+| merge_cm | runs exact (of 15) | extra (duplicate) records | missing (merged) records |
+| --- | --- | --- | --- |
+| 60 | 7 | 8 | 0 |
+| 75 | 10 | 3 | 2 |
+| **85 (new default)** | **13** | **0** | **2** |
+| 100 (old default) | 12 | 0 | 3 |
+
+Before KI-22, 100 gave 13/15 with 1 duplicate and 1 merge. The only misses left at 85 are demo seeds 2 and 4: the demo
+world's two people stand 155 cm apart and are seen in separate frames, so drift merges them. Headless 20 s demo now
+finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_person` (3 seeds, ~1.7 s).
 
 ## Fresh-machine test log
 
@@ -43,6 +58,7 @@ python -m scoutbot --profile sim --set sim.world=demo --headless 20
 
 | Time | main before | Merged in | Tests | Headless 20 s (demo) | Notes |
 | --- | --- | --- | --- | --- | --- |
+| 11:35 | 58c8c11 | agent/station -> main (0f4ea19, ★ C1-C7) | 121 passed | 1 survivor, 0 contacts, 0 trips | clean |
 | 10:37 | c73ec55 (B milestone) | origin/main into agent/station | 121 passed (3.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Removed `sync.sinks: []` from laptop/sim as B requested. |
 
 ## Known limits
