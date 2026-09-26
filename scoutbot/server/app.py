@@ -66,10 +66,15 @@ def create_app(rt) -> FastAPI:
     @app.post("/api/detections")
     async def detections(req: Request, token: str | None = None):
         """The remote YOLO worker (laptop) posts confirmed detections here (perception.yolo.where = remote)."""
-        auth(token); body = await req.json(); now = time.monotonic()
-        dets = [PersonDetection(**{**d, "at": now}) for d in body.get("detections", [])]
+        auth(token); now = time.monotonic()
+        try:
+            body = await req.json()
+            dets = [PersonDetection(**{**d, "at": now}) for d in body.get("detections", [])]
+            fps = None if body.get("fps") is None else float(body["fps"])
+        except Exception as e:           # [robot] wiring: bad body -> 400, not 500
+            raise HTTPException(400, f"bad detections body: {type(e).__name__}")
         with rt.shared.lock:
-            rt.shared.detections = dets; rt.shared.det_at = now; rt.shared.det_fps = body.get("fps")
+            rt.shared.detections = dets; rt.shared.det_at = now; rt.shared.det_fps = fps
             rt.shared.det_status = "remote (laptop worker)"
         return {"ok": True}
 

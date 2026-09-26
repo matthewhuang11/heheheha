@@ -43,3 +43,13 @@ def test_fresh_person_expires():
     assert fresh_person([det()], 10.0, 11.5, 1.0) is None
     near_and_far = [det("left", "far"), det("right", "near")]
     assert fresh_person(near_and_far, 10.0, 10.1, 1.0).where == "right"
+
+def test_where_off_from_yaml_false_means_off():
+    """`--set perception.yolo.where=off` arrives as False (YAML 1.1); it must switch YOLO off, not try to load it."""
+    from scoutbot import settings
+    from scoutbot.perception.yolo import PerceptionWorker
+    from scoutbot.state import Shared
+    cfg = settings.load("sim", ["perception.yolo.where=off"], load_env=False)
+    assert cfg["perception"]["yolo"]["where"] is False
+    sh = Shared(); PerceptionWorker(cfg, sh).run()
+    assert sh.det_status == "off"

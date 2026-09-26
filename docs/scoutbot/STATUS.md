@@ -19,17 +19,20 @@ Numbers measured (live):
 
 ---
 
-## R – Robot   (phase 2; updated —, branch agent/robot @ —)
-Camera: IN USE by R (write CAMERA FREE here when done with R1-R4)
-Done (on main):
-Doing now:
-Next:
-Blocked on:
-Needs Matthew: (exact steps + minutes)
-Requests for L:
-Edits to files I don't own:
-Contract changes:
-Numbers measured:
+## R – Robot   (phase 2; updated 13:54 EDT, branch agent/robot)
+Camera: CAMERA FREE (13:54). R1 still needs one 4-minute session with a person (below); R will ask here first before using it again.
+Done (on main): (merging now) R3 remote YOLO end to end + worker backoff + 400 on bad bodies; R4 camera fallback live; R2 both STOP paths live; distance_tune tool; YOLO where=off fix.
+Doing now: R5 safety live checks (sim, no camera), then R6 blind spot, R7 cliff, R8 hardware hand-off.
+Next: R10-R12.
+Blocked on: R9 Pi bring-up: no Pi hardware, pins, sensor model, camera model or battery voltage yet.
+Needs Matthew: (about 5 minutes, when L is not using the camera)
+  1. Tape measure (or pace it out). Terminal: `cd ~/heheheheha/scoutbot-a && .venv/bin/python -m scoutbot.tools.distance_tune`
+  2. Stand facing the webcam at 0.7, 1.0, 1.5, 2.5, 4.0 m, then lying down at 1.5 m, then half hidden behind a chair at 1.5 m. Press Enter each time you're in place (a helper presses Enter, or press it and walk to the mark within ~3 s: it grabs 20 frames).
+  3. Post "R1 done" here. R turns the table into near_frac/mid_frac.
+Requests for L: FYI wiring edit in your server/app.py (84ecb03): POST /api/detections validates the body and returns 400. FYI: `--set x=off` becomes YAML False; worth checking any of your own `off` settings.
+Edits to files I don't own: 84ecb03 scoutbot/server/app.py (9 lines, bad detection body -> 400).
+Contract changes: none (400 on bad /api/detections is stricter input handling only).
+Numbers measured: remote YOLO person input clears 0.5-1.2 s after the worker dies; worker reconnects after a robot restart with 1 message. Laptop live 50 frames: yolov8n.pt 13.9 FPS vs NCNN 11.5 FPS (same boxes) -> keep .pt on the laptop. Camera fallback from index 3 -> 1 works; startup ~17 s with the search.
 
 ---
 
