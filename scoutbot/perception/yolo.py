@@ -3,6 +3,7 @@ Where it runs is one setting: perception.yolo.where = robot | remote | sim | off
 from __future__ import annotations
 import threading, time
 from collections import deque
+from pathlib import Path
 from scoutbot.types import PersonDetection
 
 def box_to_detection(x1, y1, x2, y2, conf, ycfg: dict, now: float, source: str = "yolo") -> PersonDetection:
@@ -28,7 +29,9 @@ class Confirmer:
 class YoloDetector:
     def __init__(self, ycfg: dict):
         from ultralytics import YOLO            # pip install ultralytics
-        self.cfg = ycfg; self.model = YOLO(ycfg.get("model", "yolov8n.pt"))
+        self.cfg = ycfg
+        model_path = ycfg.get("model", "yolov8n.pt")
+        self.model = YOLO(model_path, task="detect") if Path(model_path).is_dir() else YOLO(model_path)
         dev = ycfg.get("device", "auto"); self.device = None if dev == "auto" else dev
         if self.device is None:
             try:

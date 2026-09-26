@@ -8,7 +8,7 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ## A – Robot   (updated 2026-09-26 10:32 EDT, branch agent/robot @ 59fb4d6)
 Done (on main): A1 / KI-01 motor_check fix, fake-motor regression test, and robot run notes.
-Done (on my branch, not merged yet): A2 camera auto-detect, camcheck update, fake-capture tests, and portable camera default.
+Done (on my branch, not merged yet): A2 camera auto-detect; A3/A5 YOLO benchmark, optional requirements, NCNN export and folder loading.
 Doing now: Validate and commit A2, then YOLO laptop work.
 Next: A3 YOLO webcam validation and dependency split.
 Blocked on: Pi hardware details: actual GPIO pins, sensor type, camera model, and motor battery voltage (Matthew or hardware team).
@@ -16,7 +16,7 @@ Requests for B:
 Requests for C: KI-22 needs pose.py to use the existing motion.slow_cm_s and motion.backup_cm_s calibrations once Pi measurements are available. KI-37: please move ultralytics out of requirements.txt; A adds requirements-yolo.txt in A3.
 Edits to files I don't own:
 Contract changes: None.
-Numbers measured: Sim motor bench halfway values: forward +0.60/+0.60, slow +0.35/+0.35, turns +/-0.45, backup -0.35/-0.35. Laptop camera: index 1, 1280x720, 37.3 FPS, not black. A1 integration: 100 tests and demo headless sim passed.
+Numbers measured: Sim motor bench halfway values: forward +0.60/+0.60, slow +0.35/+0.35, turns +/-0.45, backup -0.35/-0.35. Laptop camera: index 1, 1280x720, 37.3 FPS, not black. YOLO: 6.88 FPS at 320, 7.75 FPS at 640, NCNN export 12.4 s. A1 integration: 100 tests and demo headless sim passed.
 Known issues fixed (KI-xx): KI-01 on main (75bac90); KI-33 pending merge.
 
 ---

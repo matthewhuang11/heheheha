@@ -1,0 +1,2 @@
+# Optional person detection. This is a large download and is not required for the simulator.
+ultralytics

@@ -5,6 +5,7 @@
 - A1 / KI-01: `motor_check` feeds each action every 0.1 seconds for one second, prints the ramped wheel output halfway through, then stops before the next action.
 - The bench tool skips its physical-wheels confirmation when the configured motor driver is `fake`, so it is safe to exercise on the sim profile.
 - A2 / KI-33: OpenCV camera selection tries the configured camera first, skips black or unavailable video feeds, and falls back across indexes 0 through 3. Windows uses OpenCV's DirectShow backend.
+- A3/A5: YOLO webcam benchmark supports 320/640 pixels, optional box-height logging, NCNN export, and exported-folder loading. `requirements-yolo.txt` makes the large detector optional.
 
 ## How to run
 
@@ -23,6 +24,7 @@ For real hardware, keep the wheels off the ground and confirm the prompt before 
 
 - Sim motor bench, 2026-09-26: FORWARD reached left/right `+0.60/+0.60`; FORWARD_SLOW `+0.35/+0.35`; turns `-/+0.45`; BACK_UP `-0.35/-0.35` at the halfway check.
 - Laptop camera check, 2026-09-26: selected index 1 at 1280x720, 37.3 FPS, frames not black. The configured `.env` index remains honored.
+- YOLO laptop benchmark, 2026-09-26: 6.88 FPS at 320 px and 7.75 FPS at 640 px on Apple M1 CPU. NCNN 320 export completed in 12.4 seconds; output folder is `yolov8n_ncnn_model` (12.1 MB, ignored and must be copied or exported on the Pi).
 
 ## Pi bring-up log
 
