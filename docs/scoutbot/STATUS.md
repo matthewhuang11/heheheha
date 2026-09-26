@@ -2,7 +2,7 @@
 
 Rules: edit ONLY your own section; update on every merge to main, when blocked, when you change a contract, and at least hourly. Read the other sections every time you merge `origin/main`. Format and rules: `docs/scoutbot/parallel/01-shared-rules.md` section 4.
 
-**main health:** green at `219082b` (C checks 12:37: 137 tests; 20 s demo sim: 2 survivors, 0 contacts, 0 watchdog trips). C13 Fuser/gate integration is on main.
+**main health:** green at `3b61ce8` (C final integration checks 12:55: 144 tests; 60 s demo sim: 1 survivor, 0 contacts, 0 watchdog trips). Robot and Cloud integration merges are on main.
 
 ---
 
@@ -36,17 +36,17 @@ Known issues fixed (KI-xx): KI-03, KI-10, KI-12, KI-20, KI-35, KI-36, KI-43.
 
 ---
 
-## C – Station   (updated 12:37 EDT, branch agent/station @ 219082b)
-Done (on main): C1-C7 one-step setup (0f4ea19); C9 command safety + fast state; C10 dashboard polish; C11 survivors/pose plus stable identity matching (1d0110b, full 15/15 sweep); C13 dashboard/runtime state, 60 s expiry, and Fuser/gate suppression (219082b); C15 record/replay (9d2edd0, b619502); simulator uses a drawn camera (e6b763f).
+## C – Station   (updated 12:57 EDT, integration on main @ 3b61ce8)
+Done (on main): C1-C7 one-step setup (0f4ea19); C9 command safety + fast state; C10 dashboard polish; C11 survivors/pose plus stable identity matching (1d0110b, full 15/15 sweep); C13 dashboard/runtime state, 60 s expiry, and Fuser/gate suppression (219082b); C15 record/replay (9d2edd0, b619502); simulator uses a drawn camera (e6b763f). Final A/B integration: Robot `dc0bd68`, then Cloud `3b61ce8`.
 Done (on my branch, not merged yet): -
-Doing now: wait for A/B merges, then run the required integration pass.
-Next: integration pass after A and B merge their available branch work to main.
-Blocked on: a Windows machine to run start.bat for real (written + reviewed). Anyone with Windows: double-click start.bat in a fresh clone and paste the output here. A's camera/YOLO commits and B's reply-filter commit are available only on their branches; per workflow they must merge to main before Station integrates them.
-Requests for A: (1) please merge your branch to main soon: A1 motor_check and A2 camera auto-detect are only on agent/robot. (2) add requirements-yolo.txt (setup.py installs it if present, else `pip install ultralytics`). (3) KI-22 is DONE on my side: pose.py + simworld use motion.forward_cm_s / slow_cm_s / backup_cm_s / turn_deg_s, interpolated in ramps. Just put your measured numbers in pi.yaml `motion:`. (4) KI-38 is now integrated at the Fuser/gate boundary on main; no action needed unless A changes that API.
-Requests for B: FYI wiring edit 1f673bb in your `talk` section: `talk.gemini.timeout_s` 8 -> 12, because the Gemini API rejects deadlines under 10 s (every talk call was failing with real keys). Please keep it >= 10 in cloud code/tests. (Done earlier: removed sync.sinks [] from laptop/sim.)
+Doing now: Final integration evidence recorded; `demo-ready` remains intentionally untagged.
+Next: Run the remaining physical/live acceptance checks on the demo laptop, phone Wi-Fi, and Pi before tagging.
+Blocked on: Windows `start.bat` on real Windows; phone `--share` and laptop webcam dashboard; Pi hardware/motor shutdown; Ollama/local-voice offline flow; live Gemini/ElevenLabs/Mongo/Tiger sync. This environment had no usable LAN address, denied camera permission, and no running Ollama.
+Requests for A: Please provide Pi hardware validation, including the motor-stop acceptance check, when hardware is available.
+Requests for B: Please provide live provider validation (Ollama, ElevenLabs, Mongo, Tiger, and Gemini as needed) on the demo environment.
 Edits to files I don't own: 1f673bb base.yaml talk.gemini.timeout_s 8 -> 12 (B's section, 1 line). 72d309b `perception/fusion.py`: handled-position suppression boundary for C13, with contract and regression updates.
 Contract changes: new WebSocket command `ping` -> reply `{for: "ping", ok, t}` (RTT); `sim`/`sensor` refused unless server.test_controls (03-contracts.md section 8 updated). `--profile mac` = alias of `laptop`. `survivors.merge_cm` 100 -> 85. Dashboard chips: "Gemini scene" (from vlm.* + services.gemini_scene) and "Gemini talk" (services.gemini). `PersonDetection.track_id` and `Survivor.track_id` are optional stable detector identities; the registry prefers a matching ID over spatial merging, and old records remain valid. `Fuser.suppress(positions)` now accepts handled survivor positions each tick and applies the same decision to fusion and the YOLO gate hold.
-Integration passes (time, commits, result): 10:37 origin/main c73ec55 (B): green. 11:35 ★ agent/station -> main 0f4ea19: 121 tests, headless OK. 11:44: 132 tests, headless demo 2 survivors / 0 contacts. 12:14: 136 tests passed; 60 s headless demo sim passed (1 survivor, 0 contacts, 0 watchdog trips); C13 continue-search and C15 record/replay regression tests passed. Sim now uses synthetic video, avoiding a webcam-permission warning. 12:17 ★ f2f3fc6: 136 tests and headless 20 s demo passed; pushed to origin/main. 12:20: explicit sweep was 13/15. 12:25: stable sim track identities fixed demo seeds 2 and 4; full 15/15 sweep and 137 tests passed. 12:27: 60 s demo sim found 2 survivors with 0 contacts and 0 watchdog trips. 12:29 ★ 1d0110b: 137 tests and headless 20 s demo passed; pushed to origin/main. 12:37 ★ 219082b: 137 tests and headless 20 s demo passed; C13 Fuser/gate suppression tests passed.
+Integration passes (time, commits, result): 10:37 origin/main c73ec55 (B): green. 11:35 ★ agent/station -> main 0f4ea19: 121 tests, headless OK. 11:44: 132 tests, headless demo 2 survivors / 0 contacts. 12:14: 136 tests passed; 60 s headless demo sim passed (1 survivor, 0 contacts, 0 watchdog trips); C13 continue-search and C15 record/replay regression tests passed. Sim now uses synthetic video, avoiding a webcam-permission warning. 12:17 ★ f2f3fc6: 136 tests and headless 20 s demo passed; pushed to origin/main. 12:20: explicit sweep was 13/15. 12:25: stable sim track identities fixed demo seeds 2 and 4; full 15/15 sweep and 137 tests passed. 12:27: 60 s demo sim found 2 survivors with 0 contacts and 0 watchdog trips. 12:29 ★ 1d0110b: 137 tests and headless 20 s demo passed; pushed to origin/main. 12:37 ★ 219082b: 137 tests and headless 20 s demo passed; C13 Fuser/gate suppression tests passed. 12:53 ★ `dc0bd68` Robot merge: 144 tests; 60 s sim 1 survivor / 0 contacts / 0 watchdog trips; pushed. 12:55 ★ `3b61ce8` Cloud merge: 144 tests; 60 s sim 1 survivor / 0 contacts / 0 watchdog trips; pushed. 12:57 local fresh clone of final main: setup (`--no-yolo`), launcher doctor, and 20 s sim passed; camera permission denied and remote clone authentication unavailable.
 Known issues fixed (KI-xx): KI-02, 07, 08, 21, 22, 30, 31, 32, 34 (my files), 37, 38, 42, 44.
 
 ---

@@ -52,6 +52,7 @@ cases at a fast-forwarded clock (about 13 seconds).
 | 10:36 | Linux Docker `python:3.10-slim` | fresh clone, `scripts/setup.py --no-yolo`, tests, headless 20, `./start.sh sim --share` | **pass**: 117 tests, headless 0 contacts / 1 survivor, dashboard 200 | setup 29 s | the slim image needs `libgl1 libglib2.0-0` for OpenCV (normal desktops have them). Doctor now explains this if OpenCV won't load. |
 | 12:14 | Mac (arm64, Python 3.13) | station branch, setup then full suite and 60 s demo sim | **pass**: 136 tests; 1 survivor, 0 contacts, 0 watchdog trips | 63 s demo | sim initially opened an unnecessary denied webcam. **Fixed**: `sim` now uses its drawn camera, verified by the regression test. |
 | - | Windows | `start.bat` | written and reviewed, **not run** (no Windows machine yet) | | Ask a teammate with Windows to double-click it and send the screen output. |
+| 12:57 | Mac (arm64, Python 3.13) | fresh local clone of final `main`, `scripts/setup.py --no-yolo`, then `./start.sh doctor` and a 20 s sim | **pass**: setup created `.venv` and blank `.env`; launcher worked; sim found 1 survivor with 0 contacts / 0 watchdog trips | ~60 s setup + sim | Camera permission was denied, as the doctor reported; the simulator needs no camera. Remote fresh-clone authentication was unavailable to this integration environment, so this was a local-clone check. |
 
 ## Laptop run with real keys (C8, 11:46)
 
@@ -77,9 +78,12 @@ cases at a fast-forwarded clock (about 13 seconds).
 | 12:27 | station survivor-track branch | stable simulated survivor identities | 137 passed (15.6 s) | 2 survivors, 0 contacts, 0 watchdog trips | full 5 seeds x 3 worlds sweep: 15/15 exact |
 | 12:29 | 1d0110b | agent/station -> main (survivor identity matching) | 137 passed (15.3 s) | 2 survivors, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
 | 12:37 | 219082b | agent/station -> main (C13 Fuser/gate suppression) | 137 passed (14.9 s) | 2 survivors, 0 contacts, 0 watchdog trips | handled, distinct, and 60 s expiry regressions pass |
+| 12:53 | 6c112b3 | agent/robot -> main (`dc0bd68`) | 144 passed (13.4 s) | 1 survivor, 0 contacts, 0 watchdog trips | camera auto-detection, YOLO/Pi tooling, and Robot regressions integrated; pushed to `origin/main`. |
+| 12:55 | dc0bd68 | agent/cloud -> main (`3b61ce8`) | 144 passed (12.7 s) | 1 survivor, 0 contacts, 0 watchdog trips | safe survivor-reply filtering integrated; pushed to `origin/main`. |
 
 ## Known limits
 
 - Windows `start.bat` not yet run on a real Windows machine.
 - `--share` shows every LAN address it finds. Venue Wi-Fi sometimes blocks devices from seeing each other: use a phone hotspot.
 - Setup needs Python 3.10+ already installed (the launchers say where to get it).
+- Final integration environment had no usable LAN address, denied camera permission, and no running Ollama; therefore this pass did not repeat the phone dashboard, webcam, local-voice/Ollama, or live Mongo/Tiger checks.
