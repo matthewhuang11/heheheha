@@ -70,6 +70,25 @@ session) will be logged here.
   Startup with the search takes ~17 s (each missing index costs a few seconds on macOS).
 - Found and fixed while testing: `--set perception.yolo.where=off` arrives as YAML `False` and was treated as "robot"; now "off".
 
+### R5 safety live checks (A7), sim profile on port 8001: all PASS
+
+Server: `python -m scoutbot --profile sim --set sim.world=demo --set server.port=8001 --set voice.provider=fake`.
+Driven by a scripted WebSocket client that behaves like the dashboard (drive every 100 ms, heartbeats); timings are from the
+client polling `/api/state`, so they include up to ~50 ms of polling delay.
+
+| # | Check (manual steps for a person in brackets) | Expected | Observed |
+| --- | --- | --- | --- |
+| 1 | Take control, hold W, close the tab [open http://localhost:8001, Take control, hold W, close the tab] | STOPPED within 0.5 s of the last message | FORWARD -> STOPPED + STOP **0.04 s** after the socket closed (last drive was ~0.1 s earlier), reason "robot link lost (0.5s) - motors stopped" |
+| 2 | Take control, hold W, release W (tab stays open) | wheels stop within 0.3 s | FORWARD -> STOP **0.24 s** after the last drive; mode stays MANUAL |
+| 3 | E-stop from MANUAL while driving [press STOP or Space] | STOPPED + STOP immediately | **0.09 s** |
+| 4 | E-stop from AUTO while moving | STOPPED + STOP immediately | FORWARD_SLOW -> STOP **0.06 s** |
+| 5 | Kill the server (`kill -9`) while driving | no motion | the process (and with it the motors and the fake robot) is gone; dashboard socket closed in 0.01 s and shows "Robot link lost". **On a real Pi the L298N may keep its last PWM after the process dies: see hardware-handoff.md (pull-downs on ENA/ENB, or a relay/kill switch).** |
+| 6 | Control loop hangs (in-process test: `control_tick` blocked) | watchdog stops wheels within 0.5 s | wheels 0.35/0.35 -> 0/0 after **0.49 s**, trips = 1 |
+
+Invariants with automated tests: boot STOPPED, E-stop (test_server, test_deadman), only control_tick applies motors
+(static test), watchdog 0.5 s (test_deadman), manual command expiry 0.3 s (test_deadman), link loss (test_deadman),
+forward refused/capped (test_gate).
+
 ## Pi bring-up log
 
 - Waiting for Pi hardware, actual GPIO pins, sensor type, camera model, and motor battery voltage.
