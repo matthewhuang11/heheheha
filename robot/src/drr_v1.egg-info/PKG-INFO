@@ -1,5 +1,0 @@
-Metadata-Version: 2.4
-Name: drr-v1
-Version: 0.1.0
-Summary: Laptop-safe reference implementation of the controlled DRR V1 baseline
-Requires-Python: >=3.11
