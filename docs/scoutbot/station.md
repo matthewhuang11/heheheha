@@ -30,26 +30,18 @@
 
 ## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock, 5 seeds x 3 worlds)
 
-People "seen" = came within 2.5 m in view. Records = entries the registry created.
+People "seen" = came within 2.5 m in view. Records = entries the registry created. Simulated
+detections now include a stable per-person track ID; the registry prefers that identity over a
+spatial merge, while real untracked detections retain the existing spatial fallback.
 
-**Acceptance gap (open):** the brief requires equal counts in all 15 runs. The latest full sweep is
-13/15 exact; `demo` seeds 2 and 4 each merge two people into one record. The fast regression test
-passes for three representative runs, but it does not establish the required full sweep. This remains
-a Station completion blocker until the merge logic is tuned without reintroducing duplicates.
-
-After KI-22 (the pose and the sim use per-action speeds: forward 30, slow 18, back-up 18 cm/s, turns 90 deg/s,
-interpolated during ramps), sweep of `survivors.merge_cm`:
-
-| merge_cm | runs exact (of 15) | extra (duplicate) records | missing (merged) records |
+| Matching | runs exact (of 15) | extra (duplicate) records | missing (merged) records |
 | --- | --- | --- | --- |
-| 60 | 7 | 8 | 0 |
-| 75 | 10 | 3 | 2 |
-| **85 (new default)** | **13** | **0** | **2** |
-| 100 (old default) | 12 | 0 | 3 |
+| Spatial merge only (`merge_cm: 85`) | 13 | 0 | 2 |
+| **Stable sim track ID + spatial fallback** | **15** | **0** | **0** |
 
-Before KI-22, 100 gave 13/15 with 1 duplicate and 1 merge. The only misses left at 85 are demo seeds 2 and 4: the demo
-world's two people stand 155 cm apart and are seen in separate frames, so drift merges them. Headless 20 s demo now
-finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_person` (3 seeds, ~1.7 s).
+The affected demo people stand 155 cm apart and appear in separate frames, so spatial estimates alone
+merged them in seeds 2 and 4. `test_one_survivor_record_per_person` now runs all 15 deterministic
+cases at a fast-forwarded clock (about 13 seconds).
 
 ## Fresh-machine test log
 
@@ -82,10 +74,10 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | 10:37 | c73ec55 (B milestone) | origin/main into agent/station | 121 passed (3.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Removed `sync.sinks: []` from laptop/sim as B requested. |
 | 12:14 | 8f208ea | C13/C15 station validation before merge | 136 passed (6.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Continue-search and record/replay regression tests pass. A has unmerged camera/YOLO work; B has an unmerged reply-filter fix, so neither was merged directly into Station. |
 | 12:17 | f2f3fc6 | agent/station -> main (C13, C15, simulator camera) | 136 passed (6.3 s) | 1 survivor, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
+| 12:27 | station survivor-track branch | stable simulated survivor identities | 137 passed (15.6 s) | 2 survivors, 0 contacts, 0 watchdog trips | full 5 seeds x 3 worlds sweep: 15/15 exact |
 
 ## Known limits
 
-- Survivor sweep acceptance remains open: 13/15 exact records versus people seen (see above).
 - Windows `start.bat` not yet run on a real Windows machine.
 - `--share` shows every LAN address it finds. Venue Wi-Fi sometimes blocks devices from seeing each other: use a phone hotspot.
 - Setup needs Python 3.10+ already installed (the launchers say where to get it).

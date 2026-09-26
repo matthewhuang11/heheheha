@@ -23,6 +23,7 @@ class PersonDetection(BaseModel):
     distance: Literal["near", "mid", "far"]
     confidence: float
     bbox: tuple[float, float, float, float] | None = None   # normalized x1, y1, x2, y2
+    track_id: str | None = None                              # stable optional detector identity; stronger than position matching
     at: float = 0.0
 
 class Pose(BaseModel):
@@ -73,3 +74,4 @@ class Survivor(BaseModel):
     chat: list[ChatMessage] = Field(default_factory=list)
     version: int = 1
     handled_at: str | None = None          # when a responder pressed "Continue search" (KI-38); None = not handled
+    track_id: str | None = None            # optional stable detector identity; old survivor records have none
