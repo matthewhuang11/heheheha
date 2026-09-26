@@ -1,0 +1,107 @@
+# Defaults for every profile. Other profiles only override what they change.
+# Any value can be overridden on the command line:  python -m scoutbot --profile mac --set hw.distance=random
+
+hw:
+  camera: opencv            # opencv | folder | synthetic
+  camera_index: 1           # overridden by CAMERA_INDEX in .env if set
+  camera_folder: dataset/
+  camera_fps: 15
+  distance: sliders         # sliders | random | scripted | simworld | hcsr04 | tof
+  random_every_s: 1.0
+  motors: fake              # fake | l298n
+  # GPIO numbers (BCM). PLACEHOLDERS: the hardware team fills these in.
+  pins:
+    trig: [23, 24, 25]      # left, center, right
+    echo: [17, 27, 22]      # through a 5V -> 3.3V voltage divider!
+    left:  {fwd: 5,  back: 6,  en: 12}
+    right: {fwd: 13, back: 19, en: 18}
+  tof_xshut: [4, 16, 20]    # only for distance: tof
+
+motion:                     # measured once on the real floor (spec 5.3)
+  forward_cm_s: 30
+  slow_cm_s: 18
+  backup_cm_s: 18
+  turn_deg_s: 90
+  ramp_s: 0.15
+  trim_left: 1.0
+  trim_right: 1.0
+
+speeds:                     # [left, right] as fractions of full PWM
+  STOP: [0, 0]
+  FORWARD: [0.6, 0.6]
+  FORWARD_SLOW: [0.35, 0.35]
+  TURN_LEFT: [-0.45, 0.45]
+  TURN_RIGHT: [0.45, -0.45]
+  BACK_UP: [-0.35, -0.35]
+
+safety:
+  motor_watchdog_s: 0.5
+  manual_cmd_valid_s: 0.3
+  link_required: true       # false only for headless tests
+  link_timeout_manual_s: 0.5
+  link_timeout_auto_s: 2.0
+  auto_on_link_loss: stop   # stop | continue
+  backup_max_s: 1.5
+
+control:
+  hz: 10
+  log_every_s: 0.5
+
+scene:
+  provider: gemini          # gemini | fake | sim
+  interval_s: 2.0
+
+perception:
+  yolo:
+    where: robot            # robot | remote | sim | off
+    model: yolov8n.pt
+    imgsz: 320
+    device: auto            # auto | cpu | mps | cuda
+    min_conf: 0.45
+    confirm: [2, 3]         # person must appear in 2 of the last 3 frames
+    near_frac: 0.5          # box height / image height above this = near
+    mid_frac: 0.2
+    max_age_s: 1.0
+
+survivors:
+  merge_cm: 100
+  bearing_deg: 25
+  dist_cm: {near: 70, mid: 200, far: 400}
+  max_snapshots: 5
+  data_dir: data
+
+talk:
+  enabled: true
+  gemini: {timeout_s: 8}
+  ollama: {url: "http://localhost:11434", model: "qwen2.5:3b", timeout_s: 20, keep_alive: "30m"}
+  breaker: {fail_threshold: 3, open_s: 30}
+  history_messages: 12
+
+voice:
+  provider: elevenlabs      # elevenlabs | local | fake
+  fallback: local           # local | fake
+  model: eleven_flash_v2_5
+  dedupe_s: 10
+
+sync:
+  sinks: [mongo, tiger]     # any of: mongo, tiger   (empty list = local only)
+  interval_s: 3
+  backoff_max_s: 60
+  telemetry_hz: 1
+
+net:
+  check_interval_s: 3
+  check_url: "https://generativelanguage.googleapis.com/"
+  force_offline: false
+
+sim:
+  world: room_basic
+  noise: 0.05
+  fake_people: true
+
+server:
+  host: 127.0.0.1
+  port: 8000
+  test_controls: true
+  state_hz: 10
+  open_browser: false

@@ -1,0 +1,24 @@
+# The real robot (Raspberry Pi 4).
+hw:
+  camera: opencv
+  camera_index: 0
+  distance: hcsr04          # or tof, if the hardware team uses VL53L0X/VL53L1X over I2C
+  motors: l298n
+scene:
+  provider: gemini
+perception:
+  yolo:
+    where: robot            # set to remote if run_yolo_bench shows < 3 FPS
+    model: yolov8n_ncnn_model   # export on the Mac: yolo export model=yolov8n.pt format=ncnn imgsz=320
+    device: cpu
+talk:
+  ollama: {url: "http://LAPTOP_IP:11434"}   # the base-station laptop's IP on the shared Wi-Fi
+voice:
+  provider: elevenlabs
+  fallback: local
+sync:
+  sinks: [mongo, tiger]
+server:
+  host: 0.0.0.0
+  test_controls: false
+  open_browser: false

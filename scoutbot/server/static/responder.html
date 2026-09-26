@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scoutbot Responder</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%2358a6ff%22/%3E%3C/svg%3E">
+<style>
+:root{--bg:#0d1117;--card:#161b22;--card2:#1c2230;--line:#30363d;--tx:#e6edf3;--mut:#8b949e;--g:#3fb950;--y:#d29922;--o:#f0883e;--r:#f85149;--b:#58a6ff;--grey:#6e7681}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,system-ui,Segoe UI,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);display:flex;gap:8px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+h1{font-size:16px;margin:0 8px 0 0;white-space:nowrap}
+.chip{padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--mut);font-size:12px;white-space:nowrap}
+.ok{color:var(--g);border-color:var(--g)}.warn{color:var(--y);border-color:var(--y)}.bad{color:var(--r);border-color:var(--r)}.info{color:var(--b);border-color:var(--b)}
+.mode{font-weight:700;font-size:13px;padding:3px 12px}
+button{background:#21262d;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;touch-action:manipulation}
+button:hover{border-color:var(--b)}button:disabled{opacity:.4;cursor:not-allowed}
+button.on{border-color:var(--y);color:var(--y)}
+#estop{background:#b62324;border-color:#f85149;color:#fff;font-weight:800;font-size:15px;padding:8px 22px;letter-spacing:.05em}
+#estop:hover{background:#da3633}
+.spacer{flex:1}
+main{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(0,.95fr);gap:14px;padding:14px 16px}
+@media(max-width:1250px){main{grid-template-columns:1fr 1fr}#colR{grid-column:1 / -1}}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:14px}
+.card h2{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin:0 0 8px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.vid{position:relative;background:#000;border-radius:6px;overflow:hidden;aspect-ratio:16/9}
+.vid img,.vid canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.act{font-size:30px;font-weight:800;letter-spacing:.02em}
+.sub{color:var(--mut)}
+.veto{margin-top:6px;background:#3d1214;border:1px solid var(--r);color:#ffb3ae;border-radius:6px;padding:5px 9px;font-size:13px}
+.bars{display:grid;gap:6px;margin-top:8px}
+.bar{display:grid;grid-template-columns:52px 1fr 70px;gap:8px;align-items:center;font-size:12px;color:var(--mut)}
+.track{height:10px;background:#0b0f14;border-radius:5px;overflow:hidden;border:1px solid var(--line)}
+.fill{height:100%;background:var(--g);transition:width .15s}
+.v{text-align:right;color:var(--tx);font-variant-numeric:tabular-nums}
+.pad{display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,52px);gap:6px;justify-content:center;margin-top:8px;user-select:none}
+.pad button{font-size:20px;padding:0}
+.pad .held{background:#1f6feb;border-color:#58a6ff}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}.kv b{color:var(--mut);font-weight:500}
+#map{width:100%;aspect-ratio:1/1;background:#0b0f14;border-radius:6px;display:block}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:6px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.slist{display:grid;gap:6px;max-height:210px;overflow:auto}
+.srow{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:7px;cursor:pointer}
+.srow:hover,.srow.sel{border-color:var(--b);background:var(--card2)}
+.tag{font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;color:#0d1117}
+.IMMEDIATE{background:var(--r)}.DELAYED{background:var(--y)}.MINOR{background:var(--g)}.UNKNOWN,.NONE{background:var(--grey)}
+.snap{width:100%;border-radius:6px;background:#000;max-height:220px;object-fit:contain}
+.prelim{font-size:11px;color:var(--y);border:1px dashed var(--y);border-radius:4px;padding:1px 6px}
+.chat{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;padding:6px;background:#0b0f14;border-radius:6px;margin:8px 0}
+.msg{max-width:88%;padding:6px 9px;border-radius:8px;font-size:13px}
+.msg small{display:block;color:var(--mut);font-size:10.5px;margin-top:2px}
+.m-survivor{align-self:flex-start;background:#2d333b}
+.m-robot{align-self:flex-end;background:#1f3a5f}
+.m-responder{align-self:flex-end;background:#3a2f12}
+.row{display:flex;gap:6px;margin-top:6px}
+input[type=text]{flex:1;background:#0b0f14;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;min-width:0}
+.log{font-size:12px;color:var(--mut);max-height:150px;overflow:auto;display:grid;gap:2px}
+.srow2{display:grid;grid-template-columns:52px 1fr 60px 62px;gap:8px;align-items:center;margin:5px 0;font-size:12px}
+.srow2 input[type=range]{width:100%}
+#down{position:fixed;inset:0;background:rgba(13,17,23,.82);display:none;align-items:center;justify-content:center;z-index:20;font-size:20px;color:#ffb3ae;text-align:center;padding:20px}
+.muted{color:var(--mut)}
+.trace{display:grid;gap:2px;margin-top:6px;font-size:11.5px}
+.trace div{color:var(--mut);padding:1px 6px;border-radius:4px}.trace .fired{color:var(--tx);background:#1f2a3a;outline:1px solid var(--b)}
+details summary{cursor:pointer;color:var(--mut);font-size:12px}
+</style></head>
+<body>
+<div id="down">Robot link lost — motors stopped.<br><span class="muted" style="font-size:14px">Reconnecting…</span></div>
+<header>
+  <h1>Scoutbot · Responder</h1>
+  <span id="mode" class="chip mode">—</span>
+  <button id="estop" title="Space bar">STOP</button>
+  <button id="bAuto">Start auto</button>
+  <button id="bManual">Take control</button>
+  <span class="spacer"></span>
+  <span id="cLink" class="chip">link</span><span id="cNet" class="chip">internet</span><span id="cGem" class="chip">Gemini</span>
+  <span id="cOll" class="chip">Ollama</span><span id="cYolo" class="chip">YOLO</span><span id="cVoice" class="chip">voice</span>
+  <span id="cMongo" class="chip" hidden>Mongo</span><span id="cTiger" class="chip" hidden>Tiger</span>
+</header>
+<main>
+<section id="colL">
+  <div class="card">
+    <h2><span>Live camera</span><span id="camInfo" class="muted"></span></h2>
+    <div class="vid"><img id="video" alt="live video"><canvas id="overlay"></canvas></div>
+  </div>
+  <div class="card">
+    <h2><span>Robot is doing</span><span id="modeReason" class="muted"></span></h2>
+    <div class="act" id="action">—</div>
+    <div class="sub" id="reason">—</div>
+    <div class="veto" id="veto" hidden></div>
+    <div class="bars" id="bars"></div>
+    <details style="margin-top:8px"><summary>why (brain rule trace)</summary><div class="trace" id="trace"></div></details>
+  </div>
+  <div class="card" id="driveCard">
+    <h2><span>Manual drive</span><span class="muted">hold W A S D / arrows · Shift = slow · Space = STOP</span></h2>
+    <div class="pad">
+      <span></span><button data-a="FORWARD" title="W">▲</button><span></span>
+      <button data-a="TURN_LEFT" title="A">◀</button><button data-a="BACK_UP" title="S">▼</button><button data-a="TURN_RIGHT" title="D">▶</button>
+    </div>
+    <div style="text-align:center;margin-top:8px"><label class="muted"><input type="checkbox" id="slow"> slow forward</label></div>
+    <div id="driveHint" class="muted" style="text-align:center;margin-top:4px;font-size:12px"></div>
+  </div>
+</section>
+<section id="colM">
+  <div class="card">
+    <h2><span>Map <span class="muted">(approximate)</span></span><span id="mapInfo" class="muted"></span></h2>
+    <canvas id="map" width="700" height="700"></canvas>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--b)"></span>robot (estimate)</span>
+      <span><span class="dot" style="background:#6e768166"></span>uncertainty</span>
+      <span><span class="dot" style="background:#8b949e"></span>obstacle readings</span>
+      <span id="lgTrue" hidden><span class="dot" style="background:#3fb95066"></span>true position (sim)</span>
+      <span><span class="dot" style="background:var(--r)"></span>survivor (triage color)</span>
+    </div>
+  </div>
+  <div class="card">
+    <h2><span>Status</span></h2>
+    <div class="kv" id="status"></div>
+  </div>
+  <div class="card" id="testCard" hidden>
+    <h2><span>Test controls</span><span class="muted">local testing only</span></h2>
+    <label><input type="checkbox" id="offline"> Simulate offline (no internet)</label>
+    <div id="sliders" hidden style="margin-top:8px"></div>
+  </div>
+</section>
+<section id="colR">
+  <div class="card">
+    <h2><span>Survivors</span><span id="sCount" class="muted"></span></h2>
+    <div class="slist" id="slist"><div class="muted">None found yet.</div></div>
+  </div>
+  <div class="card" id="scard" hidden>
+    <h2><span id="sTitle">—</span><button id="bRetriage">Re-triage</button></h2>
+    <img id="sSnap" class="snap" alt="survivor snapshot">
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span id="sTag" class="tag UNKNOWN">UNKNOWN</span><span class="prelim">Preliminary – for responder review</span>
+      <span id="sModel" class="muted" style="font-size:12px"></span>
+    </div>
+    <div id="sFacts" class="kv" style="margin-top:8px"></div>
+    <div class="chat" id="chat"></div>
+    <div class="row"><input type="text" id="inSurv" placeholder="Survivor says… (type what they said)"><button id="sendSurv">Send</button></div>
+    <div class="row"><input type="text" id="inResp" placeholder="Responder says… (spoken as-is)"><button id="sendResp">Speak</button></div>
+  </div>
+  <div class="card">
+    <h2><span>Events</span></h2>
+    <div class="log" id="log"></div>
+  </div>
+</section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const TOKEN = new URLSearchParams(location.search).get("token") || "";
+const q = p => TOKEN ? `${p}${p.includes("?") ? "&" : "?"}token=${encodeURIComponent(TOKEN)}` : p;
+let ws = null, S = null, HELLO = null, sel = null, backoff = 500, held = null, seq = 0;
+$("video").src = q("/video.mjpg");
+
+function log(text, cls) {
+  const d = document.createElement("div"); d.textContent = new Date().toLocaleTimeString() + "  " + text; if (cls) d.className = cls;
+  $("log").prepend(d); while ($("log").children.length > 80) $("log").lastChild.remove();
+}
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+
+function connect() {
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}${q("/ws")}`);
+  ws.onopen = () => { backoff = 500; $("down").style.display = "none"; log("connected to robot"); };
+  ws.onclose = () => { $("down").style.display = "flex"; release(); setTimeout(connect, backoff); backoff = Math.min(backoff * 2, 5000); };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === "hello") { HELLO = m; setupHello(); }
+    else if (m.type === "state") { S = m; render(); }
+    else if (m.type === "event") onEvent(m);
+    else if (m.type === "reply" && m.ok === false) log(`${m.for}: ${m.error}`, "bad");
+  };
+}
+setInterval(() => send({ type: "heartbeat", t: Date.now() / 1000 }), 100);
+
+function setupHello() {
+  $("testCard").hidden = !HELLO.test_controls;
+  $("lgTrue").hidden = !HELLO.world;
+  if (HELLO.test_controls && HELLO.distance === "sliders") buildSliders();
+}
+function buildSliders() {
+  const box = $("sliders"); box.hidden = false; box.innerHTML = '<div class="muted" style="font-size:12px">Fake distance sensors (cm)</div>';
+  ["left", "center", "right"].forEach((n, i) => {
+    const r = document.createElement("div"); r.className = "srow2";
+    r.innerHTML = `<span>${n}</span><input type="range" min="2" max="300" value="200" id="sl${i}"><span class="v" id="slv${i}">200</span><label class="muted"><input type="checkbox" id="sle${i}" checked> echo</label>`;
+    box.appendChild(r);
+    r.querySelector("input[type=range]").oninput = ev => { $("slv" + i).textContent = ev.target.value; send({ type: "sensor", i, value: +ev.target.value }); };
+    r.querySelector("input[type=checkbox]").onchange = ev => send({ type: "sensor", i, valid: ev.target.checked });
+  });
+}
+
+function chip(el, text, cls) { el.textContent = text; el.className = "chip " + (cls || ""); }
+function svcClass(s) { s = (s || "").toLowerCase(); return s.startsWith("ok") || s.startsWith("ready") || s === "running" || s === "sim" || s.includes(" ok") ? "ok" : s.includes("error") || s.includes("unreach") || s.includes("unavailable") || s.includes("failed") ? "bad" : s.includes("disabled") || s.includes("off") ? "warn" : "info"; }
+const fmt = v => v === null || v === undefined ? "no echo" : `${Math.round(v)} cm`;
+
+function render() {
+  const s = S;
+  const mc = { STOPPED: "bad", AUTO: "ok", MANUAL: "info" }[s.mode];
+  chip($("mode"), s.mode, "mode " + mc); $("modeReason").textContent = s.mode_reason || "";
+  $("bAuto").classList.toggle("on", s.mode === "AUTO"); $("bManual").classList.toggle("on", s.mode === "MANUAL");
+  $("action").textContent = s.final_action.replace("_", " ");
+  $("action").style.color = s.final_action === "STOP" ? "var(--r)" : s.final_action.startsWith("FORWARD") ? "var(--g)" : "var(--y)";
+  const d = s.decision;
+  $("reason").textContent = s.mode === "AUTO" ? `rule ${d.rule}: ${d.reason}${d.notes && d.notes.length ? " · " + d.notes.join("; ") : ""}`
+    : s.mode === "MANUAL" ? `manual control · brain would do ${d.action} (rule ${d.rule})` : "stopped · brain would do " + d.action + ` (rule ${d.rule}: ${d.reason})`;
+  $("veto").hidden = !s.veto; if (s.veto) $("veto").textContent = "Safety gate: " + s.veto;
+  // bars
+  const names = ["left", "center", "right"], P = HELLO ? HELLO.policy : { stop_cm: 25, slow_cm: 60 };
+  $("bars").innerHTML = names.map((n, i) => {
+    const v = s.sensors.filtered[i], pct = v == null ? 100 : Math.min(100, v / 3);
+    const col = v == null ? "var(--grey)" : v < P.stop_cm ? "var(--r)" : v < P.slow_cm ? "var(--y)" : "var(--g)";
+    return `<div class="bar"><span>${n}</span><div class="track"><div class="fill" style="width:${pct}%;background:${col}"></div></div><span class="v">${fmt(v)}</span></div>`;
+  }).join("");
+  $("trace").innerHTML = (s.trace || []).map(t => `<div class="${t.fired ? "fired" : ""}">${t.rule}. ${t.name}${t.applicable ? "" : " (skipped)"} — ${escapeHtml(t.evidence || "")}</div>`).join("");
+  // chips
+  const la = s.deadman.link_age;
+  chip($("cLink"), `link ${la == null ? "—" : la.toFixed(1) + "s"}`, la != null && la < 0.5 ? "ok" : "bad");
+  chip($("cNet"), s.online ? "internet" : s.force_offline ? "offline (sim)" : "offline", s.online ? "ok" : "warn");
+  const g = s.services.gemini || "", o = s.services.ollama || "";
+  chip($("cGem"), "Gemini" + (s.online ? "" : " (offline)"), s.online ? svcClass(g) : "warn"); $("cGem").title = g + " · scene: " + (s.vlm.error || "ok");
+  chip($("cOll"), "Ollama", svcClass(o)); $("cOll").title = o;
+  chip($("cYolo"), `YOLO ${s.yolo.fps ? s.yolo.fps + " fps" : ""}`, svcClass(s.yolo.status)); $("cYolo").title = s.yolo.status;
+  chip($("cVoice"), "voice", svcClass(s.services.voice)); $("cVoice").title = s.services.voice || "";
+  for (const [k, el] of [["mongo", $("cMongo")], ["tiger", $("cTiger")]]) {
+    const st = s.sync[k]; el.hidden = !st; if (!st) continue;
+    chip(el, `${k === "mongo" ? "Mongo" : "Tiger"}${st.queued ? " · " + st.queued + " queued" : ""}`, st.state === "ok" ? "ok" : st.state.startsWith("offline") ? "warn" : st.state === "error" || st.state === "not configured" ? "bad" : "info");
+    el.title = `${st.state}${st.error ? ": " + st.error : ""}${st.last_ok ? " · last ok " + st.last_ok : ""}`;
+  }
+  $("offline").checked = s.force_offline;
+  $("camInfo").textContent = s.camera.healthy ? "" : "camera: " + (s.camera.reasons || []).join(", ");
+  // status
+  const sc = s.scene;
+  $("status").innerHTML = [
+    ["Scene (Gemini)", sc ? `${sc.path_ahead}, ${sc.terrain}${sc.hazards.length ? ", hazards: " + sc.hazards.map(h => h.type + " " + h.where + "/" + h.distance).join(", ") : ""} · ${s.scene_age}s old` : "no report yet"],
+    ["Scene notes", sc ? escapeHtml(sc.notes) : "—"],
+    ["People", s.detections.length ? s.detections.map(d => `${d.where}/${d.distance} (${d.source} ${Math.round(d.confidence * 100)}%)`).join(", ") : "none"],
+    ["Pose (estimate)", `(${s.pose.x_cm.toFixed(0)}, ${s.pose.y_cm.toFixed(0)}) cm, ${s.pose.heading_deg.toFixed(0)}° ± ${s.pose.uncertainty_cm.toFixed(0)} cm`],
+    ["Dead-man", `motor cmd ${s.deadman.motor_age == null ? "—" : s.deadman.motor_age.toFixed(2) + "s ago"} · link timeout ${s.deadman.link_timeout}s · watchdog trips ${s.deadman.trips}`],
+    ["Gemini scene", `${s.vlm.calls} calls, last ${s.vlm.latency ?? "—"}s${s.vlm.error ? " · " + escapeHtml(s.vlm.error.slice(0, 80)) : ""}`],
+    ...(s.true_pose ? [["Sim", `wall contacts ${s.sim_contacts}`]] : []),
+  ].map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join("");
+  $("driveCard").style.opacity = s.mode === "MANUAL" ? 1 : .55;
+  $("driveHint").textContent = s.mode === "MANUAL" ? "" : "Press Take control to drive.";
+  renderSurvivors(); drawOverlay();
+}
+
+function escapeHtml(t) { return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function renderSurvivors() {
+  const list = S.survivors; $("sCount").textContent = list.length ? list.length + " found" : "";
+  if (!list.length) return;
+  const html = list.map(v => `<div class="srow ${v.id === sel ? "sel" : ""}" data-id="${v.id}"><span class="tag ${v.category || "NONE"}">${v.category || "…"}</span><b>${v.id}</b><span class="muted" style="font-size:12px">${v.sightings} sightings · ${new Date(v.last_seen).toLocaleTimeString()}</span></div>`).join("");
+  if ($("slist").dataset.h !== html) { $("slist").innerHTML = html; $("slist").dataset.h = html; }
+}
+$("slist").onclick = e => { const r = e.target.closest(".srow"); if (r) select(r.dataset.id); };
+
+async function select(id) {
+  sel = id; $("scard").hidden = false; await loadSurvivor();
+  const sv = S && S.survivors.find(x => x.id === id); if (sv) renderSurvivors();
+}
+async function loadSurvivor() {
+  if (!sel) return;
+  const r = await fetch(q(`/api/survivors/${sel}`)); if (!r.ok) return; const s = await r.json();
+  $("sTitle").textContent = `${s.id} · seen ${s.sightings}×`;
+  if (s.best_snapshot) { const src = q(`/snapshots/${s.best_snapshot}`); if ($("sSnap").dataset.src !== src) { $("sSnap").src = src; $("sSnap").dataset.src = src; } $("sSnap").hidden = false; }
+  else $("sSnap").hidden = true;
+  const t = s.triage;
+  $("sTag").className = "tag " + (t ? t.category : "UNKNOWN"); $("sTag").textContent = t ? t.category : "NOT YET";
+  $("sModel").textContent = t ? `${t.rule} · by ${t.model}` : "triage pending…";
+  $("sFacts").innerHTML = t ? Object.entries(t.facts).map(([k, v]) => `<b>${k.replace(/_/g, " ")}</b><span>${escapeHtml(Array.isArray(v) ? (v.join(", ") || "—") : v)}</span>`).join("") : "";
+  const chat = $("chat"); const atBottom = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 20; chat.innerHTML = "";
+  for (const m of s.chat) {
+    const d = document.createElement("div"); d.className = "msg m-" + m.role;
+    d.textContent = m.text; const sm = document.createElement("small"); sm.textContent = `${m.role} · ${m.source} · ${new Date(m.at).toLocaleTimeString()}`; d.appendChild(sm);
+    chat.appendChild(d);
+  }
+  if (atBottom) chat.scrollTop = chat.scrollHeight;
+}
+function onEvent(ev) {
+  const p = ev.payload;
+  if (ev.topic === "survivor") { if (p.sightings === 1 && p.version <= 2) log(`NEW survivor ${p.id}`, "ok"); if (!sel) select(p.id); else if (p.id === sel) loadSurvivor(); }
+  else if (ev.topic === "chat") { log(`${p.survivor_id} ${p.role} (${p.source}): ${p.text}`); if (p.survivor_id === sel) loadSurvivor(); }
+  else if (ev.topic === "triage") { log(`${p.survivor_id} triage ${p.category} (${p.rule}) by ${p.model}`); if (p.survivor_id === sel) loadSurvivor(); }
+  else if (ev.topic === "mode") log(`mode ${p.mode}: ${p.reason}`, p.mode === "STOPPED" ? "bad" : "");
+  else if (ev.topic === "net") log(`internet ${p.online ? "online" : "OFFLINE"}`);
+}
+$("sendSurv").onclick = () => { const t = $("inSurv").value.trim(); if (t && sel) { send({ type: "chat", survivor_id: sel, role: "survivor", text: t }); $("inSurv").value = ""; } };
+$("sendResp").onclick = () => { const t = $("inResp").value.trim(); if (t && sel) { send({ type: "chat", survivor_id: sel, role: "responder", text: t }); $("inResp").value = ""; } };
+$("inSurv").onkeydown = e => { if (e.key === "Enter") $("sendSurv").click(); };
+$("inResp").onkeydown = e => { if (e.key === "Enter") $("sendResp").click(); };
+$("bRetriage").onclick = () => sel && send({ type: "retriage", survivor_id: sel });
+
+// ---- modes ----
+$("estop").onclick = () => { release(); send({ type: "estop" }); };
+$("bAuto").onclick = () => send({ type: "mode", mode: "AUTO" });
+$("bManual").onclick = () => send({ type: "mode", mode: "MANUAL" });
+$("offline").onchange = e => send({ type: "sim", offline: e.target.checked });
+
+// ---- manual drive: repeat while held; release = stop ----
+setInterval(() => { if (held && S && S.mode === "MANUAL") send({ type: "drive", action: held === "FORWARD" && ($("slow").checked || shift) ? "FORWARD_SLOW" : held, seq: ++seq }); }, 100);
+let shift = false;
+function hold(a) { held = a; document.querySelectorAll(".pad button").forEach(b => b.classList.toggle("held", b.dataset.a === a)); }
+function release() { held = null; document.querySelectorAll(".pad button").forEach(b => b.classList.remove("held")); }
+document.querySelectorAll(".pad button").forEach(b => {
+  b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); hold(b.dataset.a); });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, release);
+});
+const KEYS = { w: "FORWARD", arrowup: "FORWARD", s: "BACK_UP", arrowdown: "BACK_UP", a: "TURN_LEFT", arrowleft: "TURN_LEFT", d: "TURN_RIGHT", arrowright: "TURN_RIGHT" };
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" && e.target.type === "text") return;
+  shift = e.shiftKey;
+  if (e.code === "Space") { e.preventDefault(); $("estop").click(); return; }
+  const a = KEYS[e.key.toLowerCase()]; if (a) { e.preventDefault(); hold(a); }
+});
+document.addEventListener("keyup", e => { shift = e.shiftKey; const a = KEYS[e.key.toLowerCase()]; if (a && held === a) release(); });
+window.addEventListener("blur", release);
+document.addEventListener("visibilitychange", () => { if (document.hidden) release(); });
+
+// ---- YOLO boxes over the video ----
+function drawOverlay() {
+  const c = $("overlay"), img = $("video"); const w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== w) c.width = w; if (c.height !== h) c.height = h;
+  const x = c.getContext("2d"); x.clearRect(0, 0, w, h);
+  const iw = img.naturalWidth || 16, ih = img.naturalHeight || 9, sc = Math.min(w / iw, h / ih), ox = (w - iw * sc) / 2, oy = (h - ih * sc) / 2;
+  for (const d of S.detections) {
+    if (!d.bbox) continue; const [x1, y1, x2, y2] = d.bbox;
+    x.strokeStyle = d.distance === "near" ? "#f85149" : "#f0883e"; x.lineWidth = 3;
+    x.strokeRect(ox + x1 * iw * sc, oy + y1 * ih * sc, (x2 - x1) * iw * sc, (y2 - y1) * ih * sc);
+    x.fillStyle = x.strokeStyle; x.font = "bold 13px system-ui"; x.fillText(`person ${d.distance} ${Math.round(d.confidence * 100)}%`, ox + x1 * iw * sc + 3, oy + y1 * ih * sc - 5);
+  }
+}
+
+// ---- map ----
+let MAP = null;
+async function pollMap() { try { const r = await fetch(q("/api/map")); if (r.ok) MAP = await r.json(); } catch (e) {} drawMap(); }
+setInterval(pollMap, 1000);
+const TRI = { IMMEDIATE: "#f85149", DELAYED: "#d29922", MINOR: "#3fb950", UNKNOWN: "#8b949e" };
+function drawMap() {
+  if (!S || !MAP) return;
+  const c = $("map"), x = c.getContext("2d"), W = c.width, H = c.height; x.clearRect(0, 0, W, H);
+  const pts = [...MAP.trail, ...MAP.obstacles, [S.pose.x_cm, S.pose.y_cm], ...S.survivors.map(s => [s.x, s.y])];
+  let minx, maxx, miny, maxy;
+  if (MAP.world) { minx = 0; miny = 0; maxx = MAP.world.size[0]; maxy = MAP.world.size[1]; }
+  else { minx = Math.min(...pts.map(p => p[0])) - 100; maxx = Math.max(...pts.map(p => p[0])) + 100; miny = Math.min(...pts.map(p => p[1])) - 100; maxy = Math.max(...pts.map(p => p[1])) + 100; }
+  const span = Math.max(maxx - minx, maxy - miny, 300), k = (W - 30) / span;
+  const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+  const T = (px, py) => [W / 2 + (px - cx) * k, H / 2 - (py - cy) * k];   // +y is up on screen
+  // grid (1 m)
+  x.strokeStyle = "#1c2230"; x.lineWidth = 1;
+  for (let g = Math.floor((cx - span) / 100) * 100; g < cx + span; g += 100) { let [a] = T(g, 0); x.beginPath(); x.moveTo(a, 0); x.lineTo(a, H); x.stroke(); }
+  for (let g = Math.floor((cy - span) / 100) * 100; g < cy + span; g += 100) { let [, b] = T(0, g); x.beginPath(); x.moveTo(0, b); x.lineTo(W, b); x.stroke(); }
+  if (MAP.world) {           // sim: draw the true room faintly
+    x.strokeStyle = "#30363d"; x.lineWidth = 2; const [a0, b0] = T(0, 0), [a1, b1] = T(MAP.world.size[0], MAP.world.size[1]); x.strokeRect(a0, b1, a1 - a0, b0 - b1);
+    for (const w of MAP.world.walls) { const [p, q2] = T(w[0], w[1]), [r, s] = T(w[2], w[3]); x.beginPath(); x.moveTo(p, q2); x.lineTo(r, s); x.stroke(); }
+    x.fillStyle = "#30363d"; for (const b of MAP.world.boxes) { const [p, q2] = T(b[0], b[1] + b[3]); x.fillRect(p, q2, b[2] * k, b[3] * k); }
+    for (const sv of MAP.world.survivors) { const [p, q2] = T(sv[0], sv[1]); x.strokeStyle = "#3fb95088"; x.beginPath(); x.arc(p, q2, 6, 0, 7); x.stroke(); }
+    if (MAP.true_trail.length) { x.strokeStyle = "#3fb95055"; x.lineWidth = 2; x.beginPath(); MAP.true_trail.forEach((p, i) => { const [a, b] = T(p[0], p[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke(); }
+  }
+  x.fillStyle = "#8b949e"; for (const o of MAP.obstacles) { const [a, b] = T(o[0], o[1]); x.fillRect(a - 1.5, b - 1.5, 3, 3); }
+  x.strokeStyle = "#58a6ff99"; x.lineWidth = 2; x.beginPath(); MAP.trail.forEach((p, i) => { const [a, b] = T(p[0], p[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke();
+  for (const s of S.survivors) {
+    const [a, b] = T(s.x, s.y), col = TRI[s.category] || "#8b949e";
+    x.fillStyle = col + "22"; x.beginPath(); x.arc(a, b, Math.max(6, s.u * k), 0, 7); x.fill();
+    x.fillStyle = col; x.beginPath(); x.arc(a, b, s.id === sel ? 9 : 7, 0, 7); x.fill();
+    x.fillStyle = "#e6edf3"; x.font = "bold 12px system-ui"; x.fillText(s.id, a + 10, b - 8);
+  }
+  if (S.true_pose) { const [a, b] = T(S.true_pose.x_cm, S.true_pose.y_cm); x.fillStyle = "#3fb95088"; x.beginPath(); x.arc(a, b, 7, 0, 7); x.fill(); }
+  const [ra, rb] = T(S.pose.x_cm, S.pose.y_cm), hd = S.pose.heading_deg * Math.PI / 180;
+  x.fillStyle = "#6e768133"; x.beginPath(); x.arc(ra, rb, S.pose.uncertainty_cm * k, 0, 7); x.fill();
+  x.fillStyle = "#58a6ff"; x.beginPath();
+  x.moveTo(ra + 14 * Math.cos(hd), rb - 14 * Math.sin(hd)); x.lineTo(ra + 8 * Math.cos(hd + 2.5), rb - 8 * Math.sin(hd + 2.5)); x.lineTo(ra + 8 * Math.cos(hd - 2.5), rb - 8 * Math.sin(hd - 2.5)); x.fill();
+  $("mapInfo").textContent = `grid 1 m · drift ±${S.pose.uncertainty_cm.toFixed(0)} cm`;
+}
+connect();
+</script>
+</body></html>

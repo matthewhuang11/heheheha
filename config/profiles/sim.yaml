@@ -1,0 +1,21 @@
+# Mac, simulated room: fake sensors react to fake driving, fake survivors in the room.
+# The camera is still your webcam if one is there (it's shown on the dashboard), but the
+# scene report and person detections come from the simulated room so the whole loop works.
+hw:
+  camera: opencv
+  distance: simworld
+  motors: fake
+scene:
+  provider: sim
+perception:
+  yolo: {where: sim}
+voice:
+  provider: fake
+sync:
+  sinks: []
+sim:
+  world: room_basic
+  fake_people: true
+server:
+  host: 127.0.0.1
+  open_browser: true

@@ -1,0 +1,17 @@
+# Everything on your Mac: laptop webcam + fake distance sensors (dashboard sliders) + fake motors.
+hw:
+  camera: opencv
+  distance: sliders
+  motors: fake
+scene:
+  provider: gemini
+perception:
+  yolo: {where: robot, device: auto}
+voice:
+  provider: elevenlabs
+  fallback: local
+sync:
+  sinks: []                 # add [mongo, tiger] once MONGODB_URI / TIGER_DATABASE_URL are in .env
+server:
+  host: 127.0.0.1
+  open_browser: true

@@ -1,0 +1,10 @@
+# Short demo: one obstacle to avoid on the way, one survivor straight ahead, a second one around the corner.
+size: [500, 400]
+start: {x: 60, y: 200, heading: 0}
+walls:
+  - [330, 0, 330, 150]
+boxes:
+  - [170, 160, 40, 30]
+survivors:
+  - [420, 215]
+  - [440, 60]

@@ -9,3 +9,4 @@ cams_output.txt
 sim_output.txt
 dataset/
 eval_*_output.txt
+data/

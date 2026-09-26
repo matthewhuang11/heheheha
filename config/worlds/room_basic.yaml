@@ -1,0 +1,14 @@
+# A 6 x 6 m room. Units: cm. The robot starts at (start) facing +x (heading 0 = +x, counter-clockwise positive).
+size: [600, 600]
+start: {x: 80, y: 300, heading: 0}
+walls:                       # extra wall segments inside the room: [x1, y1, x2, y2]
+  - [300, 0, 300, 220]
+  - [300, 380, 300, 600]
+boxes:                       # rectangles: [x, y, width, height]
+  - [150, 120, 50, 50]
+  - [420, 420, 60, 40]
+  - [470, 150, 40, 80]
+survivors:                   # [x, y]
+  - [520, 90]
+  - [540, 520]
+  - [200, 520]
