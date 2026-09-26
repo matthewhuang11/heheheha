@@ -59,6 +59,7 @@ class Runtime:
         self.net = NetWorker(cfg, self.shared, self.bus); self.sync = SyncWorker(cfg, self.shared, self.outbox)
         self.log_path = Path("logs"); self.log_path.mkdir(exist_ok=True); self.log_file = self.log_path / "scoutbot_run.jsonl"
         self._last_log = 0.0; self._last_tel = 0.0; self._det_seen = None; self._scene_seen = None
+        self._surv_cache = None; self._surv_at = 0.0; self._surv_seq = 0
         with self.shared.lock: self.shared.services["gemini_scene"] = cfg["scene"]["provider"]
         if start_workers: self.start()
 
@@ -245,11 +246,15 @@ class Runtime:
             if self.talk: self.talk.submit("retriage", msg["survivor_id"])
             return {"ok": True}
         if t == "sim":
+            if not self.cfg["server"].get("test_controls", False):
+                return {"ok": False, "error": "test controls are off on this robot (server.test_controls: false)"}
             if "offline" in msg:
                 with sh.lock: sh.force_offline = bool(msg["offline"])
                 self.bus.publish("net", {"online": sh.online()})
             return {"ok": True}
-        if t == "sensor" and self.cfg["hw"]["distance"] == "sliders":
+        if t == "sensor":
+            if not self.cfg["server"].get("test_controls", False) or self.cfg["hw"]["distance"] != "sliders":
+                return {"ok": False, "error": "sensor sliders only work with test controls on and hw.distance: sliders"}
             i = int(msg["i"])
             with sh.lock:
                 if "value" in msg: sh.slider_values[i] = float(msg["value"])
@@ -280,10 +285,21 @@ class Runtime:
                             "link_timeout": self.cfg["safety"]["link_timeout_manual_s"] if sh.mode == Mode.MANUAL else self.cfg["safety"]["link_timeout_auto_s"]},
                 "sliders": {"values": list(sh.slider_values), "valid": list(sh.slider_valid)},
             }
-        st["survivors"] = [{"id": s.id, "category": s.triage.category if s.triage else None, "sightings": s.sightings,
-                            "last_seen": s.last_seen, "x": s.pose.x_cm, "y": s.pose.y_cm, "u": s.pose.uncertainty_cm,
-                            "snapshot": s.best_snapshot, "messages": len(s.chat)} for s in self.registry.all()]
+        st["survivors"] = self.survivor_rows()
         return st
+
+    def survivor_rows(self, max_age_s: float = 0.5) -> list[dict]:
+        """Cached survivor summaries (KI-08): rebuilt at most every 0.5 s, or at once after a survivor/chat/triage event."""
+        now = time.monotonic()
+        seq = self._bus_seq_of(("survivor", "chat", "triage"))
+        if self._surv_cache is None or seq != self._surv_seq or now - self._surv_at >= max_age_s:
+            self._surv_cache = self.registry.summaries(); self._surv_at = now; self._surv_seq = seq
+        return self._surv_cache
+
+    def _bus_seq_of(self, topics) -> int:
+        for ev in reversed(self.bus.recent):
+            if ev["topic"] in topics: return ev["seq"]
+        return 0
 
     def hello(self) -> dict:
         return {"profile": self.cfg["profile"], "test_controls": self.cfg["server"].get("test_controls", False),

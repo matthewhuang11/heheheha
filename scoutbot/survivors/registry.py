@@ -37,6 +37,13 @@ class Registry:
 
     def all(self) -> list[Survivor]:
         with self.lock: return [s.model_copy(deep=True) for s in sorted(self.items.values(), key=lambda s: s.id)]
+    def summaries(self) -> list[dict]:
+        """Light rows for the dashboard's 10 Hz state: no chat or snapshot list copies (KI-08)."""
+        with self.lock:
+            return [{"id": s.id, "category": s.triage.category if s.triage else None, "sightings": s.sightings,
+                     "last_seen": s.last_seen, "x": s.pose.x_cm, "y": s.pose.y_cm, "u": s.pose.uncertainty_cm,
+                     "snapshot": s.best_snapshot, "messages": len(s.chat)}
+                    for s in sorted(self.items.values(), key=lambda s: s.id)]
     def get(self, sid: str) -> Survivor | None:
         with self.lock:
             s = self.items.get(sid); return s.model_copy(deep=True) if s else None
