@@ -18,6 +18,30 @@
 - **Windows safety**: every file my code reads/writes is utf-8, consoles use `errors="replace"`, no `±` in prints,
   `start.bat` is CRLF via `.gitattributes`.
 - Old `run_*.command` launchers use `.venv/bin/python` or `python3` (KI-02).
+- **Dashboard** (checked in headless Chromium, desktop 1400x900 and phone 390x844, no JS errors):
+  separate "Gemini scene" / "Gemini talk" chips (KI-44), offline banner with queued counts, round-trip time on the link chip,
+  STOP always in the sticky header, 72x64 px touch pad (`touch-action: none`), map fit-all / follow-robot, 1 m scale bar,
+  clickable survivor pins, survivors sorted red-first, JSON / CSV export (CSV opened and checked).
+- **Command safety (KI-07):** `sim` and `sensor` commands are refused unless `server.test_controls` (off on the Pi).
+- **Fast state (KI-08):** `Registry.summaries()` + 0.5 s cache, refreshed at once on survivor/chat/triage events.
+  `state()` stays under 5 ms with 20 survivors x 50 messages (test).
+- **`sim.fake_people: false`** makes the sim camera see nobody (KI-21).
+
+## Survivor records vs people seen (sim, 300 s AUTO, fast-forwarded clock)
+
+People "seen" = came within 2.5 m in view. Records = entries the registry created. Sweep of `survivors.merge_cm`:
+
+| merge_cm | runs exact (of 15) | extra records | missing records |
+| --- | --- | --- | --- |
+| 50 | 5 | 13 | 0 |
+| 70 | 7 | 11 | 0 |
+| 85 | 13 | 1 | 0 + 1 merged |
+| **100 (kept)** | **13** | **1** | **1** |
+
+Per run at 100 (world seed: seen/records): room_basic 1:1/1 2:2/2 3:1/1 4:1/1 5:2/2; rubble 1:2/3 2:1/1 3:2/2 4:2/2 5:0/0;
+demo 1:1/1 2:2/1 3:1/1 4:1/1 5:2/2. The two misses: rubble seed 1 drifts ~250 cm before re-seeing a person (duplicate);
+demo seed 2 sees two people 155 cm apart in separate frames, and they merge. Both come from dead-reckoning drift,
+not the merge rule; KI-22 (per-action speeds) should help. Regression test: `test_one_survivor_record_per_person`.
 
 ## How to run
 
@@ -43,6 +67,7 @@ python -m scoutbot --profile sim --set sim.world=demo --headless 20
 
 | Time | main before | Merged in | Tests | Headless 20 s (demo) | Notes |
 | --- | --- | --- | --- | --- | --- |
+| 11:35 | 58c8c11 | agent/station -> main (0f4ea19, ★ C1-C7) | 121 passed | 1 survivor, 0 contacts, 0 trips | clean |
 | 10:37 | c73ec55 (B milestone) | origin/main into agent/station | 121 passed (3.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Removed `sync.sinks: []` from laptop/sim as B requested. |
 
 ## Known limits
