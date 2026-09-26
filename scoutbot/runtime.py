@@ -111,6 +111,8 @@ class Runtime:
             except Exception as e:
                 print("[distance] read failed:", e, flush=True); time.sleep(0.2); continue
             with self.shared.lock: self.shared.raw_sensors = s
+            try: self.cliff = self.distance.read_cliff() if hasattr(self.distance, "read_cliff") else None   # [robot] wiring: KI-40
+            except Exception: self.cliff = 999.0                                                             # sensor error = assume a drop
 
     def scene_loop(self):
         prov = self.cfg["scene"]["provider"]; interval = self.cfg["scene"].get("interval_s", 2.0)
@@ -152,7 +154,7 @@ class Runtime:
         person_position = self._detection_position(person) if person else None
         scene_position = self._scene_person_position(scene, now) if scene is not None and scene.people.visible else None
         fused = self.fuser.fuse(scene, person, person_position, scene_position)
-        dec = self.controller.step(raw, fused, scene_at, cam_ok, now)
+        dec = self.controller.step(raw, fused, scene_at, cam_ok, now, cliff=getattr(self, "cliff", None))   # [robot] wiring: KI-40
         lost = link_check(mode, link_at, now, cfg["safety"])
         if lost: self.modes.request(Mode.STOPPED, lost); mode = Mode.STOPPED
         if mode == Mode.AUTO: want = dec.action
