@@ -70,6 +70,66 @@ session) will be logged here.
   Startup with the search takes ~17 s (each missing index costs a few seconds on macOS).
 - Found and fixed while testing: `--set perception.yolo.where=off` arrives as YAML `False` and was treated as "robot"; now "off".
 
+### R5 safety live checks (A7), sim profile on port 8001: all PASS
+
+Server: `python -m scoutbot --profile sim --set sim.world=demo --set server.port=8001 --set voice.provider=fake`.
+Driven by a scripted WebSocket client that behaves like the dashboard (drive every 100 ms, heartbeats); timings are from the
+client polling `/api/state`, so they include up to ~50 ms of polling delay.
+
+| # | Check (manual steps for a person in brackets) | Expected | Observed |
+| --- | --- | --- | --- |
+| 1 | Take control, hold W, close the tab [open http://localhost:8001, Take control, hold W, close the tab] | STOPPED within 0.5 s of the last message | FORWARD -> STOPPED + STOP **0.04 s** after the socket closed (last drive was ~0.1 s earlier), reason "robot link lost (0.5s) - motors stopped" |
+| 2 | Take control, hold W, release W (tab stays open) | wheels stop within 0.3 s | FORWARD -> STOP **0.24 s** after the last drive; mode stays MANUAL |
+| 3 | E-stop from MANUAL while driving [press STOP or Space] | STOPPED + STOP immediately | **0.09 s** |
+| 4 | E-stop from AUTO while moving | STOPPED + STOP immediately | FORWARD_SLOW -> STOP **0.06 s** |
+| 5 | Kill the server (`kill -9`) while driving | no motion | the process (and with it the motors and the fake robot) is gone; dashboard socket closed in 0.01 s and shows "Robot link lost". **On a real Pi the L298N may keep its last PWM after the process dies: see hardware-handoff.md (pull-downs on ENA/ENB, or a relay/kill switch).** |
+| 6 | Control loop hangs (in-process test: `control_tick` blocked) | watchdog stops wheels within 0.5 s | wheels 0.35/0.35 -> 0/0 after **0.49 s**, trips = 1 |
+
+Invariants with automated tests: boot STOPPED, E-stop (test_server, test_deadman), only control_tick applies motors
+(static test), watchdog 0.5 s (test_deadman), manual command expiry 0.3 s (test_deadman), link loss (test_deadman),
+forward refused/capped (test_gate).
+
+### R6 sensor blind spot (KI-39)
+
+`hw.sensor_angles` (default `[30, 0, -30]`) and `hw.sensor_beam_deg` (15) now drive the sim's raycast sensors and the map's
+obstacle dots. Study: closed-loop AUTO, 300 s per run, fast-forwarded clock (`tests/test_simworld.py: run()`), 20 seeds per world.
+Contacts = times the robot body touched a wall/box (should be 0).
+
+| side sensors | room_basic contacts | rubble contacts | demo contacts | total (60 runs) | avg distance explored |
+| --- | --- | --- | --- | --- | --- |
+| +/-30 deg (current) | 7 | 43 | 0 | **50** | 1000-1460 cm |
+| **+/-45 deg (recommended)** | 1 | 4 | 4 | **9** | 1230-1720 cm |
+| +/-60 deg | 3 | 3 | 1 | **7** | 845-1750 cm |
+
+(A first 10-seed pass gave 8 / 2 / 6 total, the same ranking between 30 and 45.)
+- At +/-30 deg the robot's side clips thin wall ends and box corners at ~60-90 deg off its heading, where no beam looks.
+- +/-60 deg sees the sides best but leaves a gap between 7.5 and 52.5 deg: small objects slightly off-centre are only seen by
+  the center beam, and in the demo world the robot explores less (845 cm).
+- **Recommendation: side sensors at +/-45 deg**, center straight ahead. 5x fewer contacts than today, with full coverage from
+  -52.5 to +52.5 deg with 15 deg beams (small gaps at +/-7.5-37.5 deg are covered by the center's 15 deg beam and the brain's
+  side rules). If a 4th sensor is possible, the next best addition is a short-range side sensor on each flank.
+- The default stays +/-30 deg until the hardware team confirms the mount; switch with `hw.sensor_angles: [45, 0, -45]` in pi.yaml.
+- Regression: `test_recommended_sensor_layout_45_deg` (rubble seed 8: contacts at +/-30, none at +/-45).
+
+### R7 cliff sensor (KI-40)
+- `DistanceSensors.read_cliff() -> float | None`: cm to the floor, 999 = no floor, None = not fitted. `hw.cliff: none | hcsr04 | tof`
+  with `hw.cliff_pins` (placeholders); drivers in `scoutbot/hw/cliff.py`. `build()` attaches it to every distance driver, and the
+  runtime passes it to `controller.step(cliff=)`; the frozen brain's rule 2 backs up when it reads > 15 cm. A sensor read error
+  counts as a drop (safe side).
+- Sim: world YAML `drops: [[x, y, w, h], ...]`; `World.cliff()` looks 15 cm ahead (`hw.cliff_ahead_cm`); `world.falls` counts a
+  wheel going over the edge. New world `config/worlds/dropoff.yaml` (open stairwell in front of the start).
+- Result: with the sensor, 0 falls in 120 s; the robot backs up / stops at the edge and never drives forward while the sensor
+  sees a drop. Without it, it drives straight in. `python -m scoutbot --profile sim --set sim.world=dropoff` shows rule 2
+  "floor drop ahead" on the dashboard. Test: `test_cliff_sensor_stops_the_robot_at_a_drop`.
+- Limit: the brain's answer to a drop is BACK_UP (gate: 1.5 s bursts) and then its normal rules; in the dropoff world the robot
+  can sit at the edge alternating BACK_UP and STOP rather than turning away. Safe, but a turn-away would explore better; that needs a
+  brain rule change (frozen), so it's noted for the team.
+
+### R8 hardware hand-off
+`docs/scoutbot/hardware-handoff.md`: wiring table with placeholder BCM + physical pins, 1 kOhm / 2 kOhm echo dividers,
+ToF XSHUT/addresses, cliff sensor, camera, power and common ground, kill switch, 10 kOhm pull-downs on ENA/ENB, the +/-45 deg
+recommendation, a "send us back" list and the exact first-power-up commands.
+
 ## Pi bring-up log
 
 - Waiting for Pi hardware, actual GPIO pins, sensor type, camera model, and motor battery voltage.
