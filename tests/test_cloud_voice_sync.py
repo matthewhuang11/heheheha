@@ -11,8 +11,10 @@ def test_pcm_to_wav(tmp_path):
         assert (got.getnchannels(), got.getsampwidth(), got.getframerate(), got.getnframes()) == (1, 2, 22050, 2)
 
 def test_auto_sinks_ignore_empty_values(monkeypatch):
-    monkeypatch.setenv("MONGODB_URI", "  "); monkeypatch.setenv("TIGER_DATABASE_URL", "'postgres://x'")
-    assert resolve_sinks({"sync": {"sinks": "auto"}}) == ["tiger"]
+    monkeypatch.setenv("MONGODB_URI", "  "); monkeypatch.setenv("INGEST_URL", "https://ingest.example")
+    monkeypatch.setenv("INGEST_TOKEN", "token")
+    assert resolve_sinks({"sync": {"sinks": "auto", "target": "ingest"}}) == ["ingest"]
+    assert resolve_sinks({"sync": {"sinks": "auto", "target": "mongo"}}) == []
     assert resolve_sinks({"sync": {"sinks": ["mongo"]}}) == ["mongo"]
 
 def test_tiger_url_adds_tls_requirement():

@@ -91,7 +91,8 @@ voice:
   dedupe_s: 10
 
 sync:
-  sinks: auto               # auto enables configured MongoDB and Tiger URLs; [] stays local only
+  sinks: auto               # follows target when configured; [] stays local only
+  target: ingest            # ingest (Vultr HTTPS) | mongo (direct development fallback) | none | auto
   interval_s: 3
   backoff_max_s: 60
   telemetry_hz: 1

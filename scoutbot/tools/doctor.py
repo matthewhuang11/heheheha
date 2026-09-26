@@ -25,8 +25,9 @@ OPTIONAL = [("google.genai", "google-genai", "Gemini (scene descriptions, replie
 # (env key, what turns off without it)
 KEYS = [("GEMINI_API_KEY", "Gemini: without it the robot drives on its sensors only, and replies come from Ollama or canned text"),
         ("ELEVENLABS_API_KEY", "ElevenLabs voice: without it the computer's built-in voice speaks"),
-        ("MONGODB_URI", "MongoDB: without it survivors are saved on this computer only"),
-        ("TIGER_DATABASE_URL", "Tiger Data: without it sightings are saved on this computer only")]
+        ("INGEST_URL", "cloud ingest: without it survivors and telemetry stay in this computer's local outbox"),
+        ("INGEST_TOKEN", "cloud ingest: required with INGEST_URL"),
+        ("MONGODB_URI", "direct MongoDB development fallback: production clients should leave this unset")]
 
 class Report:
     def __init__(self, quiet: bool):

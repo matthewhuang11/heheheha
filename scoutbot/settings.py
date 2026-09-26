@@ -40,7 +40,7 @@ def _read_yaml(p: Path) -> dict:
     return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
 
 ENV_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_TALK_MODEL", "ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID",
-            "MONGODB_URI", "TIGER_DATABASE_URL", "CAMERA_INDEX", "SCOUTBOT_TOKEN")
+            "MONGODB_URI", "TIGER_DATABASE_URL", "INGEST_URL", "INGEST_TOKEN", "CAMERA_INDEX", "SCOUTBOT_TOKEN")
 PLACEHOLDER_HINTS = ("your_", "replace_with", "user:password@", "changeme")
 
 def drop_placeholders() -> list[str]:

@@ -39,3 +39,17 @@ def test_offline_queues_only(tmp_path):
     w = SyncWorker({"sync": {}}, sh, ob); w._client = lambda k: s
     w.tick(now=0); assert s.survivors == {} and sh.sync_status["mongo"]["state"].startswith("offline")
     sh.force_offline = False; w.tick(now=1); assert "S-0001" in s.survivors
+
+def test_event_ids_survive_offline_then_reconnect(tmp_path):
+    ob = Outbox(tmp_path, ["ingest"])
+    ob.add_rows("telemetry", [{"time": "2026-01-01T00:00:00Z", "mode": "STOPPED"}])
+    queued = json.loads((tmp_path / "outbox" / "ingest" / "telemetry.jsonl").read_text())
+    assert queued["event_id"]
+    sh = Shared(); sh.internet = True; sh.force_offline = True; sink = Sink()
+    worker = SyncWorker({"sync": {}}, sh, ob, clients={"ingest": sink})
+    worker.tick(now=0)
+    assert ob.queued("ingest") == 1 and not sink.rows["telemetry"]
+    sh.force_offline = False
+    worker.tick(now=1)
+    assert sink.rows["telemetry"][0]["event_id"] == queued["event_id"]
+    assert ob.queued("ingest") == 0

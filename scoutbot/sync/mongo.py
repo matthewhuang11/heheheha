@@ -11,12 +11,26 @@ class MongoSink:
         self.db = self.client[db]; self.client.admin.command("ping")
         self.db.sightings.create_index([("survivor_id", 1), ("time", 1)])
         self.db.telemetry.create_index([("time", 1)])
+        self.db.sightings.create_index("event_id", unique=True, sparse=True)
+        self.db.telemetry.create_index("event_id", unique=True, sparse=True)
     def upsert_survivor(self, doc: dict) -> None:
         from pymongo.errors import DuplicateKeyError
         body = dict(doc); body["_id"] = doc["id"]
         try: self.db.survivors.update_one({"_id": doc["id"], "version": {"$lt": doc["version"]}}, {"$set": body}, upsert=True)
         except DuplicateKeyError: pass            # a newer version is already stored
     def add_sightings(self, rows: list[dict]) -> None:
-        if rows: self.db.sightings.insert_many([dict(r) for r in rows])
+        self._add_events("sightings", rows)
     def add_telemetry(self, rows: list[dict]) -> None:
-        if rows: self.db.telemetry.insert_many([dict(r) for r in rows])
+        self._add_events("telemetry", rows)
+    def _add_events(self, collection: str, rows: list[dict]) -> None:
+        if not rows:
+            return
+        from pymongo import UpdateOne
+        operations = []
+        for row in rows:
+            event_id = row.get("event_id")
+            if event_id:
+                operations.append(UpdateOne({"event_id": event_id}, {"$setOnInsert": dict(row)}, upsert=True))
+            else:  # pre-id outbox files remain readable during upgrade.
+                operations.append(UpdateOne(dict(row), {"$setOnInsert": dict(row)}, upsert=True))
+        self.db[collection].bulk_write(operations, ordered=False)

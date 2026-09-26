@@ -5,7 +5,7 @@ each cloud database. Each sink has its own folder, so one sink being down never 
 The sync worker runs only when the internet is up, upserts by id + version (so resending is harmless), deletes a file only
 after that sink confirms, and backs off 2 s, 4 s, 8 s ... up to backoff_max_s on failure."""
 from __future__ import annotations
-import json, os, threading, time
+import json, os, threading, time, uuid
 from pathlib import Path
 
 class Outbox:
@@ -21,10 +21,17 @@ class Outbox:
                 tmp.write_text(data); os.replace(tmp, p)
     def add_rows(self, kind: str, rows: list[dict]) -> None:
         if not rows: return
+        if kind not in ("sightings", "telemetry"):
+            raise ValueError(f"unknown outbox row kind {kind!r}")
         with self.lock:
             for s in self.sinks:
                 with open(self.root / s / f"{kind}.jsonl", "a") as f:
-                    for r in rows: f.write(json.dumps(r) + "\n")
+                    for r in rows:
+                        row = dict(r)
+                        # A durable client event ID makes a retry after a successful remote
+                        # write harmless. It is assigned before the row reaches disk.
+                        row.setdefault("event_id", uuid.uuid4().hex)
+                        f.write(json.dumps(row) + "\n")
     def queued(self, sink: str) -> int:
         d = self.root / sink
         if not d.exists(): return 0
@@ -63,6 +70,9 @@ class SyncWorker:
         if sink not in self.clients:
             if sink == "mongo":
                 from scoutbot.sync.mongo import MongoSink; self.clients[sink] = MongoSink(os.getenv("MONGODB_URI", ""))
+            elif sink == "ingest":
+                from scoutbot.sync.ingest import IngestSink
+                self.clients[sink] = IngestSink(os.getenv("INGEST_URL", ""), os.getenv("INGEST_TOKEN", ""))
             elif sink == "tiger":
                 from scoutbot.sync.tiger import TigerSink; self.clients[sink] = TigerSink(os.getenv("TIGER_DATABASE_URL", ""))
             else: raise ValueError(f"unknown sink {sink}")
