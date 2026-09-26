@@ -76,6 +76,7 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 | 11:35 | 58c8c11 | agent/station -> main (0f4ea19, ★ C1-C7) | 121 passed | 1 survivor, 0 contacts, 0 trips | clean |
 | 10:37 | c73ec55 (B milestone) | origin/main into agent/station | 121 passed (3.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Removed `sync.sinks: []` from laptop/sim as B requested. |
 | 12:14 | 8f208ea | C13/C15 station validation before merge | 136 passed (6.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Continue-search and record/replay regression tests pass. A has unmerged camera/YOLO work; B has an unmerged reply-filter fix, so neither was merged directly into Station. |
+| 12:17 | f2f3fc6 | agent/station -> main (C13, C15, simulator camera) | 136 passed (6.3 s) | 1 survivor, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
 
 ## Known limits
 
