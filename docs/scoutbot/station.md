@@ -75,6 +75,7 @@ cases at a fast-forwarded clock (about 13 seconds).
 | 12:14 | 8f208ea | C13/C15 station validation before merge | 136 passed (6.5 s) | 1 survivor, 0 contacts, 0 watchdog trips | Continue-search and record/replay regression tests pass. A has unmerged camera/YOLO work; B has an unmerged reply-filter fix, so neither was merged directly into Station. |
 | 12:17 | f2f3fc6 | agent/station -> main (C13, C15, simulator camera) | 136 passed (6.3 s) | 1 survivor, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
 | 12:27 | station survivor-track branch | stable simulated survivor identities | 137 passed (15.6 s) | 2 survivors, 0 contacts, 0 watchdog trips | full 5 seeds x 3 worlds sweep: 15/15 exact |
+| 12:29 | 1d0110b | agent/station -> main (survivor identity matching) | 137 passed (15.3 s) | 2 survivors, 0 contacts, 0 watchdog trips | clean; pushed to `origin/main` |
 
 ## Known limits
 
