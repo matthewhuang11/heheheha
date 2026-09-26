@@ -53,8 +53,14 @@ control:
   log_every_s: 0.5
 
 scene:
-  provider: gemini          # gemini | fake | sim
+  provider: gemini          # gemini | xai | fake | sim
   interval_s: 2.0
+  xai:
+    base_url: "https://api.x.ai/v1"  # fixed trusted API host; validated before requests
+    model: grok-4.3-latest           # current image-capable Grok alias
+    timeout_s: 15                    # bounded 1..60
+    retries: 1                        # bounded 0..2, only transient transport/5xx failures
+    reasoning_effort: xhigh           # Grok 4.3 supports none|low|medium|high|xhigh
 
 perception:
   yolo:

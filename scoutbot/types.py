@@ -18,7 +18,7 @@ class DriveCommand(BaseModel):
     received_at: float = 0.0          # robot monotonic time
 
 class PersonDetection(BaseModel):
-    source: Literal["yolo", "gemini", "sim"]
+    source: Literal["yolo", "gemini", "xai", "sim"]
     where: Literal["left", "center", "right"]
     distance: Literal["near", "mid", "far"]
     confidence: float

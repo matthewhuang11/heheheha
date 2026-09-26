@@ -6,18 +6,17 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
-## L – Live   (phase 2; updated —, branch agent/live @ —)
-Done (on main):
-Doing now:
-Next:
-Blocked on:
-Needs Matthew: (exact steps + minutes)
+## L – Live   (phase 2; updated 19:07 EDT, branch agent/live @ f43bd1e)
+Done (on main): Initial main health at `3b61ce8` was green: 144 tests; 60 s demo sim 1 survivor, 0 contacts, 0 watchdog trips.
+Done (on my branch, not merged yet): [live] xAI scene provider (`f43bd1e`): Grok 4.3 image requests use xAI's OpenAI-compatible HTTPS endpoint, a fixed trusted host, bounded retry/timeout, and the existing `SceneReport` validation. Laptop config selects `scene.provider: xai`; Gemini remains reply/triage only.
+Doing now: xAI provider validation and documentation are complete; merge readiness checks are green.
+Next: Merge the xAI scene-provider milestone after the branch is pushed; then resume the camera/phone and other live-service acceptance work.
+Blocked on: This worktree's minimal xAI fixture request found `XAI_API_KEY` unavailable at runtime, so a live Grok scene result is not claimed. Ollama, ElevenLabs, MongoDB, and Tiger are also unconfigured; camera access remains denied.
+Needs Matthew: (1) In System Settings > Privacy & Security > Camera, allow Terminal (or the terminal app running Scoutbot), then confirm it is allowed; about 1 minute. (2) Add authorized `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, and `TIGER_DATABASE_URL` to `scoutbot-b/.env`, then tell L; about 3 minutes. (3) Open Ollama and run `ollama pull qwen2.5:3b`, then leave it running; about 5-15 minutes. (4) After camera access is granted, stand or lie partly behind an obstacle in webcam view and have a same-Wi-Fi phone ready for the laptop/phone run; about 8 minutes.
 Requests for R:
-Edits to files I don't own:
-Contract changes:
-Numbers measured (live):
-
----
+Edits to files I don't own: `f43bd1e` updates runtime/settings/types/dashboard wiring, profiles, README, and the shared contract at the user's direction; it adds xAI scene selection without touching Gemini talk/triage.
+Contract changes: `scene.provider` accepts `xai`; `services["scene"]` names the active scene lane; `PersonDetection.source` now accepts `xai`. Existing `services["gemini_scene"]` is retained for older dashboard clients.
+Numbers measured (live): xAI docs show `grok-4.3-latest` is image-capable and supports `xhigh`; fixture request could not authenticate because `XAI_API_KEY` was unavailable (no key or response data recorded). 165 tests passed in 15.90 s; 20-second sim: 1 survivor, 0 contacts, 0 watchdog trips. Gemini key discovery: 19 usable models. Flash-lite scene benchmark: 30 calls, 10/30 schema-valid, p50 0.17 s, p95 1.49 s; a 3-call retry was 3/3. Gemini talk/triage: 6/6 expected categories, triage 0.69-0.97 s, reply 0.51-0.96 s. Local voice completed 8.20 s. No Ollama/ElevenLabs/Mongo/Tiger measurements because they are unconfigured.
 
 ## R – Robot   (phase 2; updated 14:12 EDT, branch agent/robot)
 Camera: CAMERA FREE (13:54). R1 still needs one 4-minute session with a person (below); R will ask here first before using it again.
@@ -31,6 +30,8 @@ Requests for L: FYI wiring edits in your runtime.py: MapBuilder uses hw.sensor_a
 Edits to files I don't own: 84ecb03 server/app.py (400 on bad detections, 9 lines); runtime.py MapBuilder sensor_angles (1 line); fb55a8e runtime.py cliff (3 lines).
 Contract changes: DONE (R11 / KI-11): `Fuser.fuse()` returns ONE object per Gemini report; when only YOLO's person changes, it updates that object's `people` in place instead of returning a new object, so the brain's SceneFilter no longer records a phantom extra report (which double-counted hazards in its 2-of-3 rule). The brain (robot/) is untouched; a fused person still shows immediately because SceneFilter.current() reads the latest report's people. L: nothing to change on your side. Also: added optional `DistanceSensors.read_cliff() -> float | None` (contracts section 1 already allowed it); config `hw.sensor_angles`, `hw.sensor_beam_deg`, `hw.cliff`, `hw.cliff_pins`, `hw.cliff_ahead_cm`; world YAML `drops`.
 Numbers measured: see robot.md. Remote YOLO person input clears 0.5-1.2 s after the worker dies. Laptop live: yolov8n.pt 13.9 FPS vs NCNN 11.5 FPS. Blind spot 20 seeds x 3 worlds: contacts 50 / 9 / 7 for +/-30 / 45 / 60.
+
+---
 
 ---
 

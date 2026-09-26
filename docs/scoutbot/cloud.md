@@ -27,10 +27,12 @@ For Gemini scene use `python -m scoutbot --profile mac`, then watch the dashboar
 | --- | --- | --- |
 | Cloud unit tests | 21 passed in 0.63 s | Router, triage, worker, outbox, isolation, WAV, auto-sink and Tiger TLS checks. |
 | B1 integration | 99 passed in 3.15 s | 20-second demo sim created 1 survivor, 0 contacts, 0 watchdog trips. |
-| Gemini scene p50/p95 | Not measured | Requires an authorized live API run. |
-| Ollama cold/warm | Not measured | Run `ollama_check` on the intended laptop. |
-| ElevenLabs first audio | Not measured | Requires a live key and installed player. |
-| Mongo/Tiger flush | Not measured | Requires real cloud database URLs. |
+| Gemini model discovery | Pass | Live key listed 19 usable Gemini models. `gemini-flash-lite-latest`, `gemini-flash-latest`, `gemini-3.8-flash`, `gemini-3.6-flash`, and `gemini-3.5-flash-lite` completed the image smoke check; two preview models returned quota errors and `gemini-3.7-flash` returned temporary high demand. |
+| Gemini scene p50/p95 | 0.17 s / 1.49 s | 30 calls to `gemini-flash-lite-latest` on a synthetic image: 10/30 schema-valid `SceneReport`s, 20 rejected responses. A later 3/3 retry succeeded. Alternate `gemini-3.8-flash`: 3/5 valid, 11.83 s mean; keep flash-lite. |
+| Gemini six-case talk/triage | Pass | 6/6 expected categories; triage 0.69–0.97 s and reply 0.51–0.96 s. The check now loads `.env` and honors the configured 12 s Gemini timeout. |
+| Ollama cold/warm | Blocked | No service listening at `http://localhost:11434`; no measurement or JSON triage result. |
+| ElevenLabs first audio | Blocked | `ELEVENLABS_API_KEY` is not configured. Built-in macOS `say` completed the voice check in 8.20 s; `mpg123` is already installed at `/opt/homebrew/bin/mpg123`. |
+| Mongo/Tiger flush | Blocked | `MONGODB_URI` and `TIGER_DATABASE_URL` are not configured; `sync_check --sink both` skipped both stores. |
 
 ## Demo queries
 
@@ -46,4 +48,4 @@ Mongo sightings: `db.sightings.aggregate([{$group:{_id:'$survivor_id',count:{$su
 
 ## Known limits
 
-Live Gemini, Ollama, ElevenLabs, MongoDB Atlas, and Tiger Data measurements are intentionally not fabricated. Run the matching checks with authorized services before a live demo. `main` now removes the profile-level empty sync-sink overrides, so configured automatic sinks can activate.
+Gemini was checked live on the demo Mac. Ollama, ElevenLabs, MongoDB Atlas, and Tiger Data cannot be accepted until their local service/credentials are configured; the offline queue-and-flush demo is therefore not yet proven. `main` now removes the profile-level empty sync-sink overrides, so configured automatic sinks can activate.

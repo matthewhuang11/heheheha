@@ -5,7 +5,7 @@ hw:
   distance: sliders
   motors: fake
 scene:
-  provider: gemini
+  provider: xai             # Grok handles camera scenes; Gemini remains talk/triage only
 perception:
   yolo: {where: robot, device: auto}
 voice:

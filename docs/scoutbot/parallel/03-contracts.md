@@ -35,7 +35,7 @@ Rules:
 
 ```python
 class PersonDetection(BaseModel):          # scoutbot/types.py (C owns the file, A owns the meaning)
-    source: Literal["yolo", "gemini", "sim"]
+    source: Literal["yolo", "gemini", "xai", "sim"]
     where: Literal["left", "center", "right"]     # which third of the image
     distance: Literal["near", "mid", "far"]       # near < ~1 m, mid ~1-2.5 m, far beyond (A tunes the cut-offs)
     confidence: float                              # 0..1
@@ -86,6 +86,7 @@ Read and write under `shared.lock`. **Writer** means the only code allowed to wr
 | `decision`, `final_action`, `veto`, `filtered`, `pose`, `true_pose`, `sim_contacts`, `last_motor_apply`, `watchdog_trips` | | control_tick (C) |
 | `internet` | bool | NetWorker (B) |
 | `force_offline` | bool | server command `sim` / `net.force_offline` (C/B) |
+| `services["scene"]` | `gemini`, `xai`, `fake`, or `sim` | Runtime scene lane |
 | `services["gemini"]`, `["ollama"]` | str | TalkWorker / TalkRouter (B) |
 | `services["voice"]` | str | Speaker (B) |
 | `services["yolo"]` | str | PerceptionWorker (A) |
@@ -160,6 +161,6 @@ Browser → robot (any message also counts as a heartbeat; the page sends `heart
 
 ## 9. Config and environment
 
-- `.env` keys: `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TALK_MODEL`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, `TIGER_DATABASE_URL`, `CAMERA_INDEX`, `SCOUTBOT_TOKEN`. B owns `.env.example`.
+- `.env` keys: `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TALK_MODEL`, `XAI_API_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, `TIGER_DATABASE_URL`, `CAMERA_INDEX`, `SCOUTBOT_TOKEN`. `scene.provider=xai` uses only `XAI_API_KEY`; Gemini talk/triage retain their Gemini keys. B owns `.env.example`.
 - Config sections by owner: see [01-shared-rules.md §2](01-shared-rules.md#shared-config-configprofilesbaseyaml).
 - `settings.load()` returns a plain dict with `cfg["profile"]` set. Code reads config at startup; there's no live reload.

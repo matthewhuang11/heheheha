@@ -78,7 +78,7 @@ details summary{cursor:pointer;color:var(--mut);font-size:12px}
   <button id="bAuto" aria-label="Start autonomous search">Start auto</button>
   <button id="bManual" aria-label="Take manual control">Take control</button>
   <span class="spacer"></span>
-  <span id="cLink" class="chip">link</span><span id="cNet" class="chip">internet</span><span id="cScene" class="chip">Gemini scene</span><span id="cGem" class="chip">Gemini talk</span>
+  <span id="cLink" class="chip">link</span><span id="cNet" class="chip">internet</span><span id="cScene" class="chip">scene</span><span id="cGem" class="chip">Gemini talk</span>
   <span id="cOll" class="chip">Ollama</span><span id="cYolo" class="chip">YOLO</span><span id="cVoice" class="chip">voice</span>
   <span id="cMongo" class="chip" hidden>Mongo</span><span id="cTiger" class="chip" hidden>Tiger</span>
 </header>
@@ -230,15 +230,16 @@ function render() {
   chip($("cNet"), s.online ? "internet" : s.force_offline ? "offline (sim)" : "offline", s.online ? "ok" : "warn");
   $("cNet").title = s.online ? "internet reachable" : s.force_offline ? "Simulate offline is on (test controls)" : "no internet";
   const g = s.services.gemini || "", o = s.services.ollama || "";
-  // KI-44: the driving camera (scene) and the survivor talk are separate Gemini uses
-  const prov = s.services.gemini_scene || "gemini";
+  // The driving camera and Gemini survivor talk are deliberately separate.
+  const prov = s.services.scene || s.services.gemini_scene || "gemini";
+  const sceneName = prov === "xai" ? "Grok scene" : prov === "gemini" ? "Gemini scene" : `scene: ${prov}`;
   let sceneTxt, sceneCls, sceneTip;
-  if (prov !== "gemini") { sceneTxt = `scene: ${prov}`; sceneCls = "info"; sceneTip = `scene reports come from the ${prov} provider (no Gemini calls)`; }
-  else if (!s.online) { sceneTxt = "Gemini scene (offline)"; sceneCls = "warn"; sceneTip = "no internet: driving on sensors only"; }
-  else if (s.vlm.failures >= 3) { sceneTxt = "Gemini scene ✗"; sceneCls = "bad"; sceneTip = s.vlm.error || "failing"; }
-  else if (s.vlm.error) { sceneTxt = "Gemini scene !"; sceneCls = "warn"; sceneTip = s.vlm.error; }
-  else if (s.vlm.calls) { sceneTxt = "Gemini scene ✓"; sceneCls = "ok"; sceneTip = `${s.vlm.calls} calls, last ${s.vlm.latency}s`; }
-  else { sceneTxt = "Gemini scene"; sceneCls = "info"; sceneTip = "waiting for the first camera frame / call"; }
+  if (prov === "fake" || prov === "sim") { sceneTxt = sceneName; sceneCls = "info"; sceneTip = `scene reports come from the ${prov} provider`; }
+  else if (!s.online) { sceneTxt = `${sceneName} (offline)`; sceneCls = "warn"; sceneTip = "no internet: driving on sensors only"; }
+  else if (s.vlm.failures >= 3) { sceneTxt = `${sceneName} ✗`; sceneCls = "bad"; sceneTip = s.vlm.error || "failing"; }
+  else if (s.vlm.error) { sceneTxt = `${sceneName} !`; sceneCls = "warn"; sceneTip = s.vlm.error; }
+  else if (s.vlm.calls) { sceneTxt = `${sceneName} ✓`; sceneCls = "ok"; sceneTip = `${s.vlm.calls} calls, last ${s.vlm.latency}s`; }
+  else { sceneTxt = sceneName; sceneCls = "info"; sceneTip = "waiting for the first camera frame / call"; }
   chip($("cScene"), sceneTxt, sceneCls); $("cScene").title = sceneTip;
   const gc = s.online ? svcClass(g) : "warn";
   chip($("cGem"), "Gemini talk" + (!s.online ? " (offline)" : gc === "ok" ? " ✓" : gc === "bad" ? " ✗" : ""), gc); $("cGem").title = g || "not used yet";
@@ -266,7 +267,7 @@ function render() {
     ["Pose (estimate)", `(${s.pose.x_cm.toFixed(0)}, ${s.pose.y_cm.toFixed(0)}) cm, ${s.pose.heading_deg.toFixed(0)}° ± ${s.pose.uncertainty_cm.toFixed(0)} cm`],
     ["Link", `round trip ${RTT == null ? "—" : Math.round(RTT) + " ms"}`],
     ["Dead-man", `motor cmd ${s.deadman.motor_age == null ? "—" : s.deadman.motor_age.toFixed(2) + "s ago"} · link timeout ${s.deadman.link_timeout}s · watchdog trips ${s.deadman.trips}`],
-    ["Gemini scene", `${s.vlm.calls} calls, last ${s.vlm.latency ?? "—"}s${s.vlm.error ? " · " + escapeHtml(s.vlm.error.slice(0, 80)) : ""}`],
+    [sceneName, `${s.vlm.calls} calls, last ${s.vlm.latency ?? "—"}s${s.vlm.error ? " · " + escapeHtml(s.vlm.error.slice(0, 80)) : ""}`],
     ...(s.true_pose ? [["Sim", `wall contacts ${s.sim_contacts}`]] : []),
   ].map(([k, v]) => `<b>${k}</b><span>${v}</span>`).join("");
   $("driveCard").style.opacity = s.mode === "MANUAL" ? 1 : .55;

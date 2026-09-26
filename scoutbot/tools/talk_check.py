@@ -1,20 +1,27 @@
 """Manual Gemini/Ollama survivor conversation check. Never prints keys."""
 from __future__ import annotations
 import argparse, time
+from dotenv import load_dotenv
 from scoutbot.talk.models import GeminiTalk, OllamaTalk
 from scoutbot.talk.router import TalkRouter
 from scoutbot.types import ChatMessage
+from scoutbot.settings import get, load
 
 CASES = [("my leg is stuck under a shelf", "IMMEDIATE"), ("I'm bleeding from my arm", "IMMEDIATE"), ("I can walk", "MINOR"), ("I cannot breathe well", "IMMEDIATE"), ("hello?", "UNKNOWN"), ("my friend is not answering", "IMMEDIATE")]
 
 def main(argv=None):
     p = argparse.ArgumentParser(description="Run scripted survivor checks without printing secrets.")
     p.add_argument("--model", choices=("gemini", "ollama", "both"), default="both"); a = p.parse_args(argv)
+    load_dotenv()
+    cfg = load("laptop")
+    talk = cfg["talk"]
     models = []
     if a.model in ("gemini", "both"):
-        try: models.append(GeminiTalk())
+        try: models.append(GeminiTalk(talk["gemini"].get("timeout_s", 8), talk.get("history_messages", 12), talk.get("prompt_version", "v1")))
         except Exception as exc: print(f"Gemini unavailable: {type(exc).__name__}")
-    if a.model in ("ollama", "both"): models.append(OllamaTalk("http://localhost:11434", "qwen2.5:3b"))
+    if a.model in ("ollama", "both"):
+        ollama = talk["ollama"]
+        models.append(OllamaTalk(get(cfg, "talk.ollama.url"), ollama["model"], ollama.get("timeout_s", 20), ollama.get("keep_alive", "30m"), talk.get("history_messages", 12), talk.get("prompt_version", "v1")))
     for model in models:
         print(f"\n{model.label}")
         for text, expected in CASES:

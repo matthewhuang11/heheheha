@@ -9,7 +9,7 @@ load_dotenv(override=True)
 key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
 if not key:
     sys.exit("FAIL: GEMINI_API_KEY is empty or missing in .env")
-print(f"Key loaded: {len(key)} chars, starts with {key[:4]}...")
+print("Key loaded.")
 client = genai.Client(api_key=key)
 
 try:
