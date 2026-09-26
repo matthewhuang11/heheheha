@@ -36,18 +36,19 @@ Known issues fixed (KI-xx): KI-03, KI-10, KI-12, KI-20, KI-35, KI-36, KI-43.
 
 ---
 
-## C – Station   (updated —, branch agent/station @ —)
-Done (on main):
-Done (on my branch, not merged yet):
-Doing now:
-Next:
-Blocked on:
-Requests for A:
-Requests for B:
-Edits to files I don't own:
-Contract changes:
-Integration passes (time, commits, result):
-Known issues fixed (KI-xx):
+## C – Station   (updated 11:35 EDT, branch agent/station @ 93842b1)
+Done (on main): C1-C7 (merging now, see Integration passes).
+Done (on my branch, not merged yet): -
+Doing now: ★ merge C1-C7 to main; then C9 (KI-07 test controls, KI-08 fast state), C10 dashboard polish (KI-44), C11 (KI-21).
+Next: C8 laptop demo run with real keys, C13 continue-search (with A), C15 recording.
+Blocked on: a Windows machine to run start.bat for real (written + reviewed; CRLF via .gitattributes). Anyone with Windows: double-click start.bat in a fresh clone and paste the output in my Requests.
+Requests for A: KI-37 done: ultralytics is out of requirements.txt; setup.py installs requirements-yolo.txt if it exists (else `pip install ultralytics`), a failure is only a warning. Please add requirements-yolo.txt. Doctor already calls your `open_best_camera` (cfg or index) if present. KI-22: will do pose per-action speeds once you post measured numbers.
+Requests for B: done: removed `sync.sinks: []` from laptop.yaml and sim.yaml (f3a9240), so `sinks: auto` works.
+Edits to files I don't own: none.
+Contract changes: `--profile mac` is now an alias of `laptop` (cfg["profile"] == "laptop"); default profile is laptop. New `--share` flag. `settings.drop_placeholders()` ignores example values (your_..., replace_with..., user:password@) in .env. No state/WebSocket changes.
+Integration passes (time, commits, result): 10:37 merged origin/main c73ec55 (B milestone): 121 tests pass, headless 20 s demo 1 survivor / 0 contacts / 0 trips. Log in docs/scoutbot/station.md.
+Known issues fixed (KI-xx): KI-02, KI-30, KI-31, KI-32, KI-34 (my files), KI-37, KI-42.
+How to start (everyone): Mac double-click start.command, Windows start.bat, Linux ./start.sh. Fresh clone -> dashboard in ~60 s on Mac, setup 29 s in Linux Docker python:3.10.
 
 ---
 
