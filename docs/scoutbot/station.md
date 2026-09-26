@@ -32,6 +32,11 @@
 
 People "seen" = came within 2.5 m in view. Records = entries the registry created.
 
+**Acceptance gap (open):** the brief requires equal counts in all 15 runs. The latest full sweep is
+13/15 exact; `demo` seeds 2 and 4 each merge two people into one record. The fast regression test
+passes for three representative runs, but it does not establish the required full sweep. This remains
+a Station completion blocker until the merge logic is tuned without reintroducing duplicates.
+
 After KI-22 (the pose and the sim use per-action speeds: forward 30, slow 18, back-up 18 cm/s, turns 90 deg/s,
 interpolated during ramps), sweep of `survivors.merge_cm`:
 
@@ -80,6 +85,7 @@ finds both (S-0001 and S-0002). Regression test: `test_one_survivor_record_per_p
 
 ## Known limits
 
+- Survivor sweep acceptance remains open: 13/15 exact records versus people seen (see above).
 - Windows `start.bat` not yet run on a real Windows machine.
 - `--share` shows every LAN address it finds. Venue Wi-Fi sometimes blocks devices from seeing each other: use a phone hotspot.
 - Setup needs Python 3.10+ already installed (the launchers say where to get it).
