@@ -6,12 +6,17 @@
 - The bench tool skips its physical-wheels confirmation when the configured motor driver is `fake`, so it is safe to exercise on the sim profile.
 - A2 / KI-33: OpenCV camera selection tries the configured camera first, skips black or unavailable video feeds, and falls back across indexes 0 through 3. Windows uses OpenCV's DirectShow backend.
 - A3/A5: YOLO webcam benchmark supports 320/640 pixels, optional box-height logging, NCNN export, and exported-folder loading. `requirements-yolo.txt` makes the large detector optional.
+- KI-04: `sensor_check` now reports an all-missing sensor as a wiring/voltage-divider warning instead of crashing.
+- KI-06: `scripts/pi_setup.sh` installs the Bookworm/OpenCV dependencies, enables I2C when available, adds GPIO/I2C group membership, creates the virtual environment and optional `.env`, and continues with remote YOLO guidance if the optional detector install fails.
+- Safety proof includes a regression check that only the control loop and the explicit wheels-off-ground bench tool call `Motors.apply()`.
 
 ## How to run
 
 ```bash
 .venv/bin/python -m scoutbot.tools.motor_check --profile sim
 .venv/bin/python -m scoutbot.tools.camcheck --profile mac
+.venv/bin/python -m scoutbot.tools.sensor_check --profile pi
+bash scripts/pi_setup.sh
 ```
 
 For real hardware, keep the wheels off the ground and confirm the prompt before running:
@@ -35,3 +40,5 @@ For real hardware, keep the wheels off the ground and confirm the prompt before 
 
 - The physical motor direction and speed calibration still require wheels-off-ground and floor tests on the actual robot.
 - No Pi hardware measurements have been taken yet.
+- Pi setup was syntax-checked locally, but not run on Raspberry Pi OS hardware.
+- Remote YOLO, live dashboard link-loss, physical camera auto-detection, and Windows DirectShow have not been revalidated in this local-only pass.
