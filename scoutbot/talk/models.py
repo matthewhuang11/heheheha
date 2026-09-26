@@ -1,7 +1,7 @@
 """The three ways the robot can think of words: Gemini (online, sees the snapshot), Ollama (offline, text only, runs on the
 laptop), and canned lines (when both are down). Each has triage_facts() and reply()."""
 from __future__ import annotations
-import json, os
+import json, os, re
 from pathlib import Path
 import httpx
 from scoutbot.talk.triage import FACTS_SCHEMA, TriageFacts, parse_facts
@@ -21,6 +21,13 @@ CANNED_REPLIES = [
     "A responder has been told where you are. Can you move your arms and legs?",
     "Stay still and stay calm. Is anyone else with you?",
 ]
+SAFE_FALLBACK_REPLY = "Stay calm if you can. Can you tell me where it hurts?"
+_UNSAFE_REPLY = re.compile(
+    r"\b(?:in\s+\d+\s*(?:minutes?|hours?)|help\s+is\s+on\s+the\s+way|rescue\s+(?:is|will)|"
+    r"(?:you|we)\s+will\s+be\s+fine|move\s+toward|take\s+(?:this|that)\s+medicine|"
+    r"(?:apply|use)\s+(?:a\s+)?tourniquet)\b",
+    re.IGNORECASE,
+)
 
 def transcript(chat: list, limit: int = 12) -> str:
     lines = []
@@ -89,4 +96,9 @@ class CannedTalk:
 def clean_reply(text: str) -> str:
     t = " ".join((text or "").strip().strip('"').split())
     if not t: raise ValueError("empty reply")
-    return t[:300]
+    # Models may ignore a prompt. Replace, rather than redact, so the survivor
+    # always receives one calm, safe question and no partial medical direction.
+    if _UNSAFE_REPLY.search(t):
+        return SAFE_FALLBACK_REPLY
+    sentences = re.findall(r"[^.!?]+[.!?]+|[^.!?]+$", t)
+    return " ".join(sentence.strip() for sentence in sentences[:2]).strip()[:300]
