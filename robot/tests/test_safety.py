@@ -32,7 +32,9 @@ def test_clear_scene_can_proceed_and_motor_requires_fresh_permit():
 def test_invalid_one_protective_sensor_fails_closed():
     value = snapshot(right=distance(valid=False))
     assert decide(value).action is Action.STOP
-    assert "sensor_invalid" in gate(Action.FORWARD_SLOW, value).veto_reasons
+    result = gate(Action.FORWARD_SLOW, value)
+    assert "sensor_invalid" in result.veto_reasons
+    assert result.latched_fault == "SENSOR_FAULT"
 
 
 def test_clearance_boundaries_are_conservative():
@@ -46,6 +48,12 @@ def test_person_and_vlm_loss_stop_motion():
     assert decide(snapshot(scene=scene(people_visible=True, people_where="left", people_distance="far"))).action is Action.STOP
     result = gate(Action.FORWARD, snapshot(scene=None, vlm_status="offline"))
     assert result.action is Action.STOP and "vlm_fault" in result.veto_reasons
+    assert result.latched_fault == "VLM_FAULT"
+
+
+def test_side_obstacle_turns_away_without_vlm_direction_authority():
+    decision = decide(snapshot(left=distance(24), scene=scene(best_direction="left")))
+    assert decision.action is Action.TURN_RIGHT
 
 
 def test_reverse_and_nonactive_never_permit_motion():

@@ -23,10 +23,20 @@ def gate(requested: Action | str, snapshot: Snapshot) -> GateResult:
         reasons.add("decision_timeout")
     if snapshot.last_renewed_ms is not None and now - snapshot.last_renewed_ms > 500:
         reasons.add("renewal_expired")
+    # Fault classes are deliberately surfaced to the lifecycle controller.  A
+    # STOP requested by planning is not a fault, while unavailable protective
+    # evidence, visual evidence, or timing is a latched baseline-V1 fault.
+    fault = None
+    if "sensor_invalid" in reasons:
+        fault = "SENSOR_FAULT"
+    elif "vlm_fault" in reasons:
+        fault = "VLM_FAULT"
+    elif reasons & {"motor_fault", "decision_timeout", "renewal_expired"}:
+        fault = "CONTROL_FAULT"
     if action is Action.STOP:
-        return GateResult(Action.STOP, None, frozenset(reasons))
+        return GateResult(Action.STOP, None, frozenset(reasons), fault)
     if reasons:
-        return GateResult(Action.STOP, None, frozenset(reasons), "CONTROL_FAULT" if "motor_fault" in reasons else None)
+        return GateResult(Action.STOP, None, frozenset(reasons), fault)
     distances = {"left": snapshot.left.distance_cm, "center": snapshot.center.distance_cm, "right": snapshot.right.distance_cm}
     if action in {Action.FORWARD, Action.FORWARD_SLOW}:
         if any(distance < 25 for distance in distances.values()):

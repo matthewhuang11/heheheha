@@ -13,6 +13,12 @@ def decide(snapshot: Snapshot) -> Decision:
     scene = snapshot.scene if snapshot.scene and snapshot.scene.usable(now) and snapshot.vlm_status == "online" else None
     if scene and scene.people_visible:
         return Decision(Action.STOP, 5)
+    # Directional ultrasonic evidence may reduce motion by choosing a turn.
+    # Visual best_direction is intentionally never consulted for this choice.
+    if snapshot.left.distance_cm < 25 and snapshot.center.distance_cm >= 25:
+        return Decision(Action.TURN_RIGHT, 3)
+    if snapshot.right.distance_cm < 25 and snapshot.center.distance_cm >= 25:
+        return Decision(Action.TURN_LEFT, 3)
     # The baseline does not permit visual evidence to select turn direction.
     if scene and (scene.path_ahead in {"blocked", "partially_blocked"} or scene.terrain in {"stairs_or_drop", "water"} or any(h["type"] in _REDUCING_HAZARDS for h in scene.hazards)):
         return Decision(Action.FORWARD_SLOW if scene.path_ahead == "partially_blocked" else Action.STOP, 4 if scene.path_ahead == "clear" else 6)
