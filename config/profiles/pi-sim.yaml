@@ -1,0 +1,26 @@
+# The Pi's config path, tested on a laptop with fake hardware (R12): same as pi.yaml (network-facing server, test controls off,
+# remote YOLO, Ollama at the laptop) but with the simulated room instead of GPIO sensors and motors.
+# Run: python -m scoutbot --profile pi-sim --set server.port=8001
+#      python -m scoutbot.perception.worker_remote --robot http://localhost:8001     (plays the laptop's YOLO worker)
+hw:
+  camera: synthetic
+  distance: simworld
+  motors: fake
+  cliff: none
+scene:
+  provider: sim
+perception:
+  yolo:
+    where: remote           # like a slow Pi: detections come from the laptop worker
+talk:
+  ollama: {url: "http://localhost:11434"}    # on the real Pi: the laptop's IP (pi.yaml)
+voice:
+  provider: fake
+sync:
+  sinks: auto
+sim:
+  world: demo
+server:
+  host: 0.0.0.0
+  test_controls: false
+  open_browser: false

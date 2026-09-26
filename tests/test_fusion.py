@@ -36,7 +36,23 @@ def test_yolo_never_removes_gemini_person_and_nearer_wins():
 def test_fused_copy_is_cached_so_scene_filter_is_not_flooded():
     f = Fuser(); s = scene(); a = f.fuse(s, det()); b = f.fuse(s, det())
     assert a is b                                                        # same object while nothing changes
-    c = f.fuse(s, det("left", "mid")); assert c is not a                 # YOLO changed -> rebuilt
+    c = f.fuse(s, det("left", "mid")); assert c is a and c.people.where == "left"   # KI-11: YOLO changed -> same copy, updated
+    assert s.people.visible is False                                     # Gemini's own report is never modified
+
+def test_yolo_change_never_adds_a_phantom_report_to_scene_filter():
+    """KI-11: a hazard seen in 1 Gemini report must not pass the SceneFilter's 2-of-3 rule just because YOLO's person
+    changed within that report (it used to be pushed again as a new object with the same timestamp)."""
+    from robot.config import DEFAULT
+    from robot.controller import Controller
+    from robot.types import Hazard, Sensors
+    rep = scene().model_copy(update={"hazards": [Hazard(type="glass", where="center", distance="near")]})
+    ctrl = Controller(DEFAULT); f = Fuser(); sens = Sensors(left=200, center=200, right=200, valid=(True, True, True), updated_at=1.0)
+    for i, p in enumerate([det("left", "far"), det("center", "mid"), det("right", "far"), None, det("left", "near")]):
+        now = 1.0 + 0.1 * i; sens.updated_at = now
+        ctrl.step(sens, f.fuse(rep, p), 1.0, True, now)
+    assert len(ctrl.sf.h) == 1                                           # one Gemini report -> one filter entry
+    assert ctrl.sf.current(1.5).people.where == "left"                   # the latest YOLO person still reaches the brain
+    new = rep.model_copy(); out = f.fuse(new, None); assert out is new    # next Gemini report without a YOLO person: as-is
 
 def test_fresh_person_expires():
     assert fresh_person([det()], 10.0, 10.5, 1.0) is not None
@@ -53,3 +69,24 @@ def test_where_off_from_yaml_false_means_off():
     assert cfg["perception"]["yolo"]["where"] is False
     sh = Shared(); PerceptionWorker(cfg, sh).run()
     assert sh.det_status == "off"
+
+def test_perception_worker_keeps_the_detection_frame(monkeypatch):
+    """KI-09: the frame YOLO detected on is stored with the detections, for the survivor snapshot."""
+    import threading, numpy as np
+    from scoutbot import settings
+    from scoutbot.perception import yolo as Y
+    from scoutbot.state import Shared
+    from scoutbot.types import PersonDetection
+    class FakeDet:
+        def __init__(self, y): pass
+        def detect(self, frame, now): return [PersonDetection(source="yolo", where="center", distance="near", confidence=0.9, bbox=(0.4, 0.1, 0.6, 0.9), at=now)]
+    monkeypatch.setattr(Y, "YoloDetector", FakeDet)
+    cfg = settings.load("laptop", ["perception.yolo.confirm=[1,1]"], load_env=False)
+    sh = Shared(); w = Y.PerceptionWorker(cfg, sh)
+    f = np.full((10, 10, 3), 7, np.uint8)
+    with sh.lock: sh.frame = f; sh.frame_seq = 1
+    th = threading.Thread(target=w.run, daemon=True); th.start()
+    import time; t0 = time.time()
+    while getattr(sh, "det_frame", None) is None and time.time() - t0 < 2: time.sleep(0.01)
+    w.stop(); th.join(1)
+    assert sh.det_frame is f and sh.detections

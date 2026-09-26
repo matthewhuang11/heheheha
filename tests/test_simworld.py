@@ -146,3 +146,10 @@ def test_no_drops_means_no_cliff_sensor():
     assert World(CFG, "room_basic", seed=1).cliff() is None
     w = World(CFG, "dropoff", seed=1); assert w.cliff() is not None and w.cliff() < 15
     w.x = 300 - 10; assert w.cliff() == 999.0
+
+def test_pi_sim_profile_mirrors_the_pi_safely():
+    from scoutbot import settings
+    pi = settings.load("pi", load_env=False); ps = settings.load("pi-sim", load_env=False)
+    assert ps["server"]["host"] == pi["server"]["host"] == "0.0.0.0"
+    assert ps["server"]["test_controls"] is False and ps["perception"]["yolo"]["where"] == "remote"
+    assert ps["hw"]["motors"] == "fake" and ps["hw"]["distance"] == "simworld"
