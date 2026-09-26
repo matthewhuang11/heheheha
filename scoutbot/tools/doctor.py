@@ -60,6 +60,12 @@ def check_packages(r: Report) -> bool:
         r.fail(f"core packages missing: {', '.join(missing)}. Run setup again: python3 scripts/setup.py "
                f"(or double-click start.command / start.bat)", blocker=True)
         return False
+    try:
+        import cv2  # noqa: F401  (installed but can still fail to load: missing system libraries on Linux)
+    except ImportError as e:
+        hint = " On Debian / Ubuntu / Raspberry Pi OS: sudo apt install libgl1 libglib2.0-0" if platform.system() == "Linux" else ""
+        r.fail(f"OpenCV is installed but won't load ({e}).{hint}", blocker=True)
+        return False
     r.ok("core packages installed")
     for mod, pip, what in OPTIONAL:
         if has(mod): r.ok(f"{pip}: {what}")
