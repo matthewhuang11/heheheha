@@ -19,17 +19,21 @@ Numbers measured (live):
 
 ---
 
-## R – Robot   (phase 2; updated —, branch agent/robot @ —)
-Camera: IN USE by R (write CAMERA FREE here when done with R1-R4)
-Done (on main):
-Doing now:
-Next:
-Blocked on:
-Needs Matthew: (exact steps + minutes)
-Requests for L:
+## R – Robot   (phase 2; updated 13:46 EDT, branch agent/robot @ 759e6da)
+Camera: IN USE by R (R1-R4). Will write CAMERA FREE here when done.
+Done (on main): (phase 1 A work, see below)
+Done (on my branch, not merged yet): R1 tool `python -m scoutbot.tools.distance_tune` (box height per distance -> suggested cut-offs).
+Doing now: R3 remote YOLO end to end, R4 camera fallback (no person needed).
+Next: R5 safety live checks, R6 blind spot, R7 cliff, R8 hardware hand-off sheet.
+Blocked on: R9 Pi bring-up: no Pi hardware, pins, sensor model, camera model or battery voltage yet.
+Needs Matthew: (about 6 minutes, one sitting, R1 + R2 together)
+  1. Have a tape measure (or pace it out). In Terminal: `cd ~/heheheheha/scoutbot-a && .venv/bin/python -m scoutbot.tools.distance_tune`
+  2. It asks you to stand facing the laptop webcam at 0.7, 1.0, 1.5, 2.5, 4.0 m, then lie down at 1.5 m, then stand half hidden behind a chair at 1.5 m. Press Enter each time you're in place (someone else presses Enter, or walk back to the keyboard, go to the mark, wait 5 s). ~4 min.
+  3. Then (R2, ~2 min): `.venv/bin/python -m scoutbot --profile laptop --set server.port=8001 --set voice.provider=fake`, open http://localhost:8001, press Start auto, walk into view from the side and stop ~0.8 m from the camera. Leave it running and tell R "done"; R reads the rest from the logs.
+Requests for L: none yet.
 Edits to files I don't own:
 Contract changes:
-Numbers measured:
+Numbers measured: live webcam smoke test: a seated person at the desk = box height 0.985 of the frame (10/10 frames).
 
 ---
 
