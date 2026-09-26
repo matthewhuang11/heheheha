@@ -97,10 +97,22 @@ def make_env():
     if env.exists():
         say(".env already exists (your keys are kept)"); return
     if example.exists():
-        shutil.copyfile(example, env)
+        lines = []
+        for line in example.read_text(encoding="utf-8").splitlines():
+            k, sep, v = line.partition("=")
+            if sep and not line.lstrip().startswith("#") and looks_like_placeholder(v):
+                line = f"{k}="                        # never copy a fake value (e.g. a token nobody knows)
+            lines.append(line)
+        env.write_text("\n".join(lines) + "\n", encoding="utf-8")
     else:
         env.write_text("# Scoutbot keys (all optional). See README.md.\n", encoding="utf-8")
     say("Created .env: open it and paste the keys you have (all optional; the simulator needs none)")
+
+PLACEHOLDER_HINTS = ("your_", "replace_with", "user:password@", "<", "changeme", "xxx")
+
+def looks_like_placeholder(value: str) -> bool:
+    v = value.strip().strip('"').strip("'").lower()
+    return bool(v) and any(h in v for h in PLACEHOLDER_HINTS)
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

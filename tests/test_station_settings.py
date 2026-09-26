@@ -30,3 +30,21 @@ def test_share_sets_host(monkeypatch):
     urls = m.dashboard_urls("0.0.0.0", 8000, "")
     assert urls[0] == ("dashboard", "http://localhost:8000") and len(urls) >= 2
     assert m.dashboard_urls("127.0.0.1", 8001, "abc") == [("dashboard", "http://localhost:8001/?token=abc")]
+
+def test_placeholder_env_values_are_ignored(monkeypatch):
+    monkeypatch.setenv("SCOUTBOT_TOKEN", "replace_with_a_long_random_token")
+    monkeypatch.setenv("MONGODB_URI", "mongodb://user:password@host/database")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+    assert set(settings.drop_placeholders()) == {"SCOUTBOT_TOKEN", "MONGODB_URI"}
+    import os
+    assert "SCOUTBOT_TOKEN" not in os.environ and os.environ["GEMINI_MODEL"] == "gemini-flash-lite-latest"
+
+def test_setup_never_copies_placeholders(tmp_path, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("setup_script", settings.ROOT / "scripts" / "setup.py")
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    (tmp_path / ".env.example").write_text("# c\nGEMINI_API_KEY=your_key\nGEMINI_MODEL=gemini-flash-lite-latest\nSCOUTBOT_TOKEN=replace_with_x\n", encoding="utf-8")
+    monkeypatch.setattr(mod, "ROOT", tmp_path)
+    mod.make_env()
+    env = (tmp_path / ".env").read_text(encoding="utf-8")
+    assert "GEMINI_API_KEY=\n" in env and "SCOUTBOT_TOKEN=\n" in env and "GEMINI_MODEL=gemini-flash-lite-latest" in env

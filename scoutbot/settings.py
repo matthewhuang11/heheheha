@@ -39,12 +39,28 @@ def resolve_profile(profile: str) -> str:
 def _read_yaml(p: Path) -> dict:
     return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
 
+ENV_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_TALK_MODEL", "ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID",
+            "MONGODB_URI", "TIGER_DATABASE_URL", "CAMERA_INDEX", "SCOUTBOT_TOKEN")
+PLACEHOLDER_HINTS = ("your_", "replace_with", "user:password@", "changeme")
+
+def drop_placeholders() -> list[str]:
+    """Old .env.example files had fake values (e.g. SCOUTBOT_TOKEN=replace_with_...), which locked the dashboard behind
+    a token nobody knows. Treat those as 'not set'. Returns the key names dropped (never the values)."""
+    dropped = []
+    for k in ENV_KEYS:
+        v = os.environ.get(k, "").strip().lower()
+        if v and any(h in v for h in PLACEHOLDER_HINTS):
+            os.environ.pop(k, None); dropped.append(k)
+    if dropped: print(f"[settings] ignoring example values in .env for: {', '.join(dropped)} (paste real keys or leave them empty)", flush=True)
+    return dropped
+
 def load(profile: str = DEFAULT_PROFILE, overrides: list[str] | None = None, load_env: bool = True) -> dict:
     if load_env:
         try:
             from dotenv import load_dotenv
             load_dotenv(ROOT / ".env", override=True, encoding="utf-8")
         except ImportError: pass
+        drop_placeholders()
     profile = resolve_profile(profile)
     cfg = _read_yaml(PROFILES / "base.yaml")
     if profile != "base":
