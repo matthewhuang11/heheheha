@@ -6,16 +6,17 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
-## L – Live   (phase 2; updated 14:32 EDT, branch agent/live @ cdbe8d7)
+## L – Live   (phase 2; updated 19:07 EDT, branch agent/live @ f43bd1e)
 Done (on main): Initial main health at `3b61ce8` was green: 144 tests; 60 s demo sim 1 survivor, 0 contacts, 0 watchdog trips.
-Doing now: L0-L4 live-service validation and documentation; camera work is unblocked by R's CAMERA FREE.
-Next: Configure and rerun the blocked Ollama, ElevenLabs, MongoDB, and Tiger checks; then merge this L0-L4 milestone and complete camera/phone/fresh-clone acceptance.
-Blocked on: Required live services are not configured: Ollama is refusing connections on localhost:11434; `ELEVENLABS_API_KEY`, `MONGODB_URI`, and `TIGER_DATABASE_URL` are absent. Camera access is denied.
+Done (on my branch, not merged yet): [live] xAI scene provider (`f43bd1e`): Grok 4.3 image requests use xAI's OpenAI-compatible HTTPS endpoint, a fixed trusted host, bounded retry/timeout, and the existing `SceneReport` validation. Laptop config selects `scene.provider: xai`; Gemini remains reply/triage only.
+Doing now: xAI provider validation and documentation are complete; merge readiness checks are green.
+Next: Merge the xAI scene-provider milestone after the branch is pushed; then resume the camera/phone and other live-service acceptance work.
+Blocked on: This worktree's minimal xAI fixture request found `XAI_API_KEY` unavailable at runtime, so a live Grok scene result is not claimed. Ollama, ElevenLabs, MongoDB, and Tiger are also unconfigured; camera access remains denied.
 Needs Matthew: (1) In System Settings > Privacy & Security > Camera, allow Terminal (or the terminal app running Scoutbot), then confirm it is allowed; about 1 minute. (2) Add authorized `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, and `TIGER_DATABASE_URL` to `scoutbot-b/.env`, then tell L; about 3 minutes. (3) Open Ollama and run `ollama pull qwen2.5:3b`, then leave it running; about 5-15 minutes. (4) After camera access is granted, stand or lie partly behind an obstacle in webcam view and have a same-Wi-Fi phone ready for the laptop/phone run; about 8 minutes.
 Requests for R:
-Edits to files I don't own: `.gitignore` adds `scoutbot-*/` in 79c71bc (L wiring commit).
-Contract changes: None.
-Numbers measured (live): Gemini key discovery: 19 usable models. Flash-lite scene benchmark: 30 calls, 10/30 schema-valid, p50 0.17 s, p95 1.49 s; a 3-call retry was 3/3. Gemini talk/triage: 6/6 expected categories, triage 0.69-0.97 s, reply 0.51-0.96 s. Local voice completed 8.20 s. No Ollama/ElevenLabs/Mongo/Tiger measurements because they are unconfigured.
+Edits to files I don't own: `f43bd1e` updates runtime/settings/types/dashboard wiring, profiles, README, and the shared contract at the user's direction; it adds xAI scene selection without touching Gemini talk/triage.
+Contract changes: `scene.provider` accepts `xai`; `services["scene"]` names the active scene lane; `PersonDetection.source` now accepts `xai`. Existing `services["gemini_scene"]` is retained for older dashboard clients.
+Numbers measured (live): xAI docs show `grok-4.3-latest` is image-capable and supports `xhigh`; fixture request could not authenticate because `XAI_API_KEY` was unavailable (no key or response data recorded). 165 tests passed in 15.90 s; 20-second sim: 1 survivor, 0 contacts, 0 watchdog trips. Gemini key discovery: 19 usable models. Flash-lite scene benchmark: 30 calls, 10/30 schema-valid, p50 0.17 s, p95 1.49 s; a 3-call retry was 3/3. Gemini talk/triage: 6/6 expected categories, triage 0.69-0.97 s, reply 0.51-0.96 s. Local voice completed 8.20 s. No Ollama/ElevenLabs/Mongo/Tiger measurements because they are unconfigured.
 
 ## R – Robot   (phase 2; updated 14:12 EDT, branch agent/robot)
 Camera: CAMERA FREE (13:54). R1 still needs one 4-minute session with a person (below); R will ask here first before using it again.
