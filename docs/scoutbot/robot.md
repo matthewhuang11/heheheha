@@ -130,6 +130,16 @@ Contacts = times the robot body touched a wall/box (should be 0).
 ToF XSHUT/addresses, cliff sensor, camera, power and common ground, kill switch, 10 kOhm pull-downs on ENA/ENB, the +/-45 deg
 recommendation, a "send us back" list and the exact first-power-up commands.
 
+### P2 (R10-R12)
+- **R10 / KI-09:** `PerceptionWorker` stores the exact frame it detected on as `shared.det_frame`; the survivor snapshot uses it
+  (remote and sim detections fall back to the current frame).
+- **R11 / KI-11:** `Fuser` keeps one fused copy per Gemini report and updates its person in place when only YOLO changes, so the
+  brain's SceneFilter sees exactly one report per Gemini call (before: every YOLO change pushed a phantom report with the same
+  timestamp, which could pass the 2-of-3 hazard rule on one real report). Test `test_yolo_change_never_adds_a_phantom_report_to_scene_filter`
+  fails on the old code and passes now. Brain untouched.
+- **R12:** `--profile pi-sim`: the Pi's config path (0.0.0.0, test controls off, remote YOLO) with the sim room. Live-checked:
+  the laptop worker drives the YOLO chip ("remote", 54 FPS), `sim` test commands are refused, and the LAN URL is printed.
+
 ## Pi bring-up log
 
 - Waiting for Pi hardware, actual GPIO pins, sensor type, camera model, and motor battery voltage.

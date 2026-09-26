@@ -19,16 +19,17 @@ Numbers measured (live):
 
 ---
 
-## R – Robot   (phase 2; updated 14:06 EDT, branch agent/robot)
+## R – Robot   (phase 2; updated 14:12 EDT, branch agent/robot)
 Camera: CAMERA FREE (13:54). R1 still needs one 4-minute session with a person (below); R will ask here first before using it again.
-Done (on main): R2 live person STOP (both paths), R3 remote YOLO e2e + quiet reconnect + 400 on bad bodies, R4 camera fallback, distance_tune tool, where=off fix (925fc87).
-Done (on my branch, merging now): R5 safety live checks (link loss 0.04 s, key release 0.24 s, e-stop 0.06-0.09 s, watchdog 0.49 s); R6 blind spot (hw.sensor_angles; +/-45 recommended: 9 contacts vs 50 at +/-30 over 60 runs); R7 cliff sensor (hw.cliff, sim drops, dropoff world, 0 falls); R8 docs/scoutbot/hardware-handoff.md.
-Doing now: ★ merge R5-R8; then R12 pi-sim profile, R10 KI-09.
+Done (on main): R2, R3, R4 (925fc87); R5, R6, R7, R8 (a91073e); R10 KI-09, R11 KI-11, R12 pi-sim (merging now).
+Done (on my branch, not merged yet): -
+Doing now: waiting on Matthew for R1 (person at set distances) and on the hardware team for R9. Will merge origin/main hourly and re-check.
+Next: R1 tuning as soon as the distance table exists; R9 Pi bring-up when hardware details arrive.
 Blocked on: R9 Pi bring-up: no Pi hardware, pins, sensor model, camera model or battery voltage yet.
 Needs Matthew: (a) R1, about 5 minutes, when L isn't using the camera: `cd ~/heheheheha/scoutbot-a && .venv/bin/python -m scoutbot.tools.distance_tune`, stand facing the webcam at 0.7 / 1.0 / 1.5 / 2.5 / 4.0 m, then lying down at 1.5 m, then half hidden behind a chair at 1.5 m, pressing Enter at each mark (it grabs 20 frames). Post "R1 done" here. (b) Forward docs/scoutbot/hardware-handoff.md to the hardware team; their answers unblock R9. Summary for them: confirm the placeholder pins; 1 kOhm/2 kOhm divider on every HC-SR04 echo; side sensors at +/-45 deg; optional downward cliff sensor; kill switch on the motor battery; 10 kOhm pull-downs on ENA/ENB; common ground; send back pins, sensor/camera models, battery voltage, wiring photos.
 Requests for L: FYI wiring edits in your runtime.py: MapBuilder uses hw.sensor_angles (1 line); distance.read_cliff() -> controller.step(cliff=) (3 lines). New world `dropoff` for a cliff demo (`--set sim.world=dropoff`); the dashboard map doesn't draw `world.drops` yet (layout() includes them) if you want to show the hole.
 Edits to files I don't own: 84ecb03 server/app.py (400 on bad detections, 9 lines); runtime.py MapBuilder sensor_angles (1 line); fb55a8e runtime.py cliff (3 lines).
-Contract changes: PROPOSED (R11 / KI-11, implementing next on agent/robot, behind tests): `Fuser.fuse()` returns ONE object per Gemini report; when only YOLO's person changes, it updates that object's `people` in place instead of returning a new object, so the brain's SceneFilter no longer records a phantom extra report (which double-counted hazards in its 2-of-3 rule). The brain (robot/) is untouched; a fused person still shows immediately because SceneFilter.current() reads the latest report's people. L: nothing to change on your side. Also: added optional `DistanceSensors.read_cliff() -> float | None` (contracts section 1 already allowed it); config `hw.sensor_angles`, `hw.sensor_beam_deg`, `hw.cliff`, `hw.cliff_pins`, `hw.cliff_ahead_cm`; world YAML `drops`.
+Contract changes: DONE (R11 / KI-11): `Fuser.fuse()` returns ONE object per Gemini report; when only YOLO's person changes, it updates that object's `people` in place instead of returning a new object, so the brain's SceneFilter no longer records a phantom extra report (which double-counted hazards in its 2-of-3 rule). The brain (robot/) is untouched; a fused person still shows immediately because SceneFilter.current() reads the latest report's people. L: nothing to change on your side. Also: added optional `DistanceSensors.read_cliff() -> float | None` (contracts section 1 already allowed it); config `hw.sensor_angles`, `hw.sensor_beam_deg`, `hw.cliff`, `hw.cliff_pins`, `hw.cliff_ahead_cm`; world YAML `drops`.
 Numbers measured: see robot.md. Remote YOLO person input clears 0.5-1.2 s after the worker dies. Laptop live: yolov8n.pt 13.9 FPS vs NCNN 11.5 FPS. Blind spot 20 seeds x 3 worlds: contacts 50 / 9 / 7 for +/-30 / 45 / 60.
 
 ---
