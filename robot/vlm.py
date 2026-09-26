@@ -6,6 +6,7 @@ from google.genai import types, errors
 from robot.types import SceneReport
 
 _SCHEMA = json.dumps(SceneReport.model_json_schema(), separators=(",", ":"))
+_CLIENTS: dict[str, object] = {}
 PROMPT = (
     "You are the eyes of a small ground robot. Describe ONLY what is in the image. Never suggest actions or commands. "
     "Answer 'unknown' when unsure.\n"
@@ -44,10 +45,10 @@ def parse(text: str) -> SceneReport:
 def describe(frame) -> SceneReport:
     key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
     if not key: raise RuntimeError("GEMINI_API_KEY is missing or empty (check .env)")
-    model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
-    ok, encoded = cv2.imencode(".jpg", shrink(frame))
+    model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip().strip('"').strip("'") or "gemini-flash-lite-latest"
+    ok, encoded = cv2.imencode(".jpg", shrink(frame), [cv2.IMWRITE_JPEG_QUALITY, 70])
     if not ok: raise RuntimeError("frame encoding failed")
-    client = genai.Client(api_key=key)
+    client = _CLIENTS.setdefault(key, genai.Client(api_key=key))
     for attempt in range(3):   # Gemini sometimes answers 503 "high demand"; retry briefly
         try:
             response = client.models.generate_content(

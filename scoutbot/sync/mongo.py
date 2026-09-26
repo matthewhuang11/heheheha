@@ -9,6 +9,8 @@ class MongoSink:
         from pymongo import MongoClient
         self.client = MongoClient(uri, serverSelectionTimeoutMS=4000, connectTimeoutMS=4000)
         self.db = self.client[db]; self.client.admin.command("ping")
+        self.db.sightings.create_index([("survivor_id", 1), ("time", 1)])
+        self.db.telemetry.create_index([("time", 1)])
     def upsert_survivor(self, doc: dict) -> None:
         from pymongo.errors import DuplicateKeyError
         body = dict(doc); body["_id"] = doc["id"]

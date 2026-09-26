@@ -14,10 +14,10 @@ class TalkWorker:
         self.snap_dir = Path(cfg["survivors"].get("data_dir", "data")) / "snapshots"
         if router is None:
             gemini = None
-            try: gemini = GeminiTalk(self.t["gemini"].get("timeout_s", 8)); self._status("gemini", "ready")
+            try: gemini = GeminiTalk(self.t["gemini"].get("timeout_s", 8), self.t.get("history_messages", 12), self.t.get("prompt_version", "v1")); self._status("gemini", "ready")
             except Exception as e: self._status("gemini", f"disabled: {e}"[:120])
             o = self.t["ollama"]
-            self.ollama = OllamaTalk(o["url"], o["model"], o.get("timeout_s", 20), o.get("keep_alive", "30m"))
+            self.ollama = OllamaTalk(o["url"], o["model"], o.get("timeout_s", 20), o.get("keep_alive", "30m"), self.t.get("history_messages", 12), self.t.get("prompt_version", "v1"))
             b = self.t.get("breaker", {})
             router = TalkRouter(shared.online, gemini, self.ollama, breaker=CircuitBreaker(b.get("fail_threshold", 3), b.get("open_s", 30)),
                                 status_fn=self._status)
