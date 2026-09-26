@@ -176,7 +176,7 @@ class Runtime:
                    "scene_age": (now - scene_at) if scene_at else None, "person": person.model_dump() if person else None,
                    "brain": {"action": dec.action.value, "rule": dec.rule}, "final": res.action.value, "veto": res.veto,
                    "pose": pose.model_dump(), "online": online}
-            with open(self.log_file, "a") as f: f.write(json.dumps(rec) + "\n")
+            with open(self.log_file, "a", encoding="utf-8") as f: f.write(json.dumps(rec) + "\n")
         hz = cfg["sync"].get("telemetry_hz", 1)
         if hz and wall - self._last_tel >= 1.0 / hz and self.outbox.sinks:
             self._last_tel = wall

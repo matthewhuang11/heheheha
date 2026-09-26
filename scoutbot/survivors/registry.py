@@ -28,7 +28,7 @@ class Registry:
 
     def _load(self):
         if not self.path.exists(): return
-        for line in self.path.read_text().splitlines():
+        for line in self.path.read_text(encoding="utf-8").splitlines():
             try: s = Survivor.model_validate_json(line)
             except Exception: continue
             self.items[s.id] = s; self._w[s.id] = max(1.0, s.sightings); self._odo_seen[s.id] = 0.0
@@ -107,7 +107,7 @@ class Registry:
 
     def _persist(self, s: Survivor, now: float, sighting=None):
         s.version += 1; self._saved_at[s.id] = now; self._dirty.discard(s.id)
-        with open(self.path, "a") as f: f.write(s.model_dump_json() + "\n")       # local first
+        with open(self.path, "a", encoding="utf-8") as f: f.write(s.model_dump_json() + "\n")       # local first
         if self.outbox is not None:
             self.outbox.put_survivor(s)
             if sighting is not None:

@@ -1,4 +1,5 @@
-# Everything on your Mac: laptop webcam + fake distance sensors (dashboard sliders) + fake motors.
+# Any laptop (Mac, Windows, Linux): its webcam + fake distance sliders + fake motors.
+# ("--profile mac" is an alias for this profile.)
 hw:
   camera: opencv
   distance: sliders
@@ -10,8 +11,6 @@ perception:
 voice:
   provider: elevenlabs
   fallback: local
-sync:
-  sinks: []                 # add [mongo, tiger] once MONGODB_URI / TIGER_DATABASE_URL are in .env
 server:
   host: 127.0.0.1
   open_browser: true

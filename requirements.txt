@@ -1,4 +1,9 @@
+# Scoutbot core packages (laptop and robot). Easiest way to install everything:
+#   double-click start.command (Mac) / start.bat (Windows), or run ./start.sh (Linux), or: python3 scripts/setup.py
+# Keep heavy packages (PyTorch, anything over ~100 MB) out of this file:
+#   YOLO / ultralytics lives in requirements-yolo.txt (optional, installed by setup.py unless --no-yolo).
 opencv-python
+numpy
 google-genai
 pydantic
 python-dotenv
@@ -7,7 +12,6 @@ fastapi
 uvicorn[standard]
 pyyaml
 httpx
-ultralytics
 pymongo
 psycopg[binary]
 websockets
