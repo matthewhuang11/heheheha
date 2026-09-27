@@ -7,12 +7,23 @@ from pathlib import Path
 
 import cv2
 
-from scoutbot.hw.camera_opencv import open_best_camera
+from scoutbot.hw.camera_opencv import PiCamera2Camera, SyntheticCamera, open_best_camera
 from scoutbot.perception.yolo import YoloDetector
 from scoutbot.settings import get, load
 
 
 FRAME_COUNT = 50
+
+
+def open_camera(cfg):
+    kind = get(cfg, "hw.camera", "opencv")
+    if kind == "picamera2":
+        return PiCamera2Camera(get(cfg, "hw.camera_size", [640, 480]), get(cfg, "hw.camera_fps", 15))
+    if kind == "synthetic":
+        return SyntheticCamera(fps=get(cfg, "hw.camera_fps", 15))
+    if kind == "opencv":
+        return open_best_camera(get(cfg, "hw.camera_index", 0))
+    raise SystemExit(f"yolo_bench supports hw.camera=opencv, picamera2, or synthetic, not {kind!r}")
 
 
 def parser():
@@ -52,7 +63,7 @@ def main(argv=None):
         return
 
     files = sorted(Path(args.folder).glob("*")) if args.folder else []
-    camera = None if files else open_best_camera(get(cfg, "hw.camera_index", 0))
+    camera = None if files else open_camera(cfg)
     if camera is not None and not camera.ok:
         raise SystemExit("no camera available")
     times: list[float] = []
