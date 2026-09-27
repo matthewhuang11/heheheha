@@ -19,13 +19,13 @@ Numbers measured (live): no live cloud measurement claimed; local ingest/outbox 
 
 ---
 
-## R – Robot   (phase 2; updated 14:12 EDT, branch agent/robot)
+## R – Robot   (phase 2; updated 00:25 EDT, branch agent/robot @ 9890644)
 Camera: CAMERA FREE (13:54). R1 still needs one 4-minute session with a person (below); R will ask here first before using it again.
 Done (on main): R2, R3, R4 (925fc87); R5, R6, R7, R8 (a91073e); R10 KI-09, R11 KI-11, R12 pi-sim (merging now).
-Done (on my branch, not merged yet): -
-Doing now: waiting on Matthew for R1 (person at set distances) and on the hardware team for R9. Will merge origin/main hourly and re-check.
-Next: R1 tuning as soon as the distance table exists; R9 Pi bring-up when hardware details arrive.
-Blocked on: R9 Pi bring-up: no Pi hardware, pins, sensor model, camera model or battery voltage yet.
+Done (on my branch, pushed): manual-control specification and safe analog control core (`d818ab1`), LAN responder-computer simulator (`636d2cb`), and fail-closed physical arm-switch support (`9890644`). The dashboard now drives analog axes with diagonal keyboard/pad input, requires a neutral frame after takeover, expires stale commands, and routes wheels through the gate and ramp.
+Doing now: awaiting real arm-switch pin, motor and sensor details for bench validation. `sim-remote` enables a separate computer or phone to operate the synthetic robot on trusted Wi-Fi.
+Next: run the responder-computer acceptance test, then configure the physical arm GPIO and complete wheels-off-ground checks.
+Blocked on: R9 Pi bring-up: no Pi hardware, pins, sensor model, camera model or battery voltage yet. Physical manual driving stays fail-closed because `pi.manual.arm_pin` is deliberately unset.
 Needs Matthew: (a) R1, about 5 minutes, when L isn't using the camera: `cd ~/heheheheha/scoutbot-a && .venv/bin/python -m scoutbot.tools.distance_tune`, stand facing the webcam at 0.7 / 1.0 / 1.5 / 2.5 / 4.0 m, then lying down at 1.5 m, then half hidden behind a chair at 1.5 m, pressing Enter at each mark (it grabs 20 frames). Post "R1 done" here. (b) Forward docs/scoutbot/hardware-handoff.md to the hardware team; their answers unblock R9. Summary for them: confirm the placeholder pins; 1 kOhm/2 kOhm divider on every HC-SR04 echo; side sensors at +/-45 deg; optional downward cliff sensor; kill switch on the motor battery; 10 kOhm pull-downs on ENA/ENB; common ground; send back pins, sensor/camera models, battery voltage, wiring photos.
 Requests for L: FYI wiring edits in your runtime.py: MapBuilder uses hw.sensor_angles (1 line); distance.read_cliff() -> controller.step(cliff=) (3 lines). New world `dropoff` for a cliff demo (`--set sim.world=dropoff`); the dashboard map doesn't draw `world.drops` yet (layout() includes them) if you want to show the hole.
 Edits to files I don't own: 84ecb03 server/app.py (400 on bad detections, 9 lines); runtime.py MapBuilder sensor_angles (1 line); fb55a8e runtime.py cliff (3 lines).
