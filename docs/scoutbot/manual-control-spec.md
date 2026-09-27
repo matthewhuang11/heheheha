@@ -237,6 +237,23 @@ A terminal program that connects to the running server at `localhost:8000` and s
 
 To support the safety recommendation in section 3, add `manual.require_arm` (default true on the `pi` profile, false on `sim` and `laptop`). "Armed" means a physical toggle switch on a Pi GPIO input (`manual.arm_pin`) is on. If not armed, `MANUAL` mode can be entered but drive commands are ignored and the dashboard says why. Turning the switch off at any time stops the robot. This is separate from, and does not replace, the hardwired E-stop.
 
+### 8.5 Test from the responder's own computer
+
+This is a required pre-hardware demo, not an optional developer exercise. A host computer runs a safe synthetic room and the responder uses a separate computer or phone on the same Wi-Fi, exactly as they will when the Pi is available.
+
+1. On the host, start the LAN-only fake-robot profile:
+
+   ```bash
+   python -m scoutbot --profile sim-remote
+   ```
+
+   This profile is deliberately `synthetic` camera, `simworld` sensors, and `fake` motors. It never touches GPIO or physical motors.
+2. On macOS, get the host's Wi-Fi address with `ipconfig getifaddr en0` (or use the address shown by the router). On Linux use `hostname -I`.
+3. On the responder's computer or phone, browse to `http://<host-ip>:8000`, press **Take control**, leave all controls neutral for one heartbeat, then hold WASD/arrows or the on-screen pad. It works in any current desktop or mobile browser.
+4. Confirm diagonal commands curve in the simulated map, release stops immediately, and closing the tab changes the mode to `STOPPED` within 0.5 s. Use the dashboard STOP button before ending the test.
+
+`sim-remote` listens on the LAN so it must only be used on a trusted local network. Do not port-forward it. A real robot must also use `SCOUTBOT_TOKEN` and the physical E-stop / arm requirements in this document.
+
 ## 9. Safety summary
 
 Independent layers, any one of which stops the robot:

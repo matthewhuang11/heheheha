@@ -352,14 +352,23 @@ $("bAuto").onclick = () => send({ type: "mode", mode: "AUTO" });
 $("bManual").onclick = () => send({ type: "mode", mode: "MANUAL" });
 $("offline").onchange = e => send({ type: "sim", offline: e.target.checked });
 
-// ---- manual drive: repeat while held; release = stop ----
-setInterval(() => { if (held && S && S.mode === "MANUAL") send({ type: "drive", action: held === "FORWARD" && ($("slow").checked || shift) ? "FORWARD_SLOW" : held, seq: ++seq }); }, 100);
-let shift = false;
-function hold(a) { held = a; document.querySelectorAll(".pad button").forEach(b => b.classList.toggle("held", b.dataset.a === a)); }
-function release() { held = null; document.querySelectorAll(".pad button").forEach(b => b.classList.remove("held")); }
+// ---- manual drive: browser sends axes at 10 Hz, and a release sends neutral ----
+// Keeping the neutral stream alive makes the take-over handshake obvious and
+// lets a responder test from any computer with a current browser.
+const heldKeys = new Set(); let shift = false;
+const AXES = { FORWARD: [1, 0], BACK_UP: [-1, 0], TURN_LEFT: [0, -1], TURN_RIGHT: [0, 1] };
+function axes() {
+  let v = 0, w = 0;
+  for (const a of heldKeys) { const x = AXES[a]; if (x) { v += x[0]; w += x[1]; } }
+  return [Math.max(-1, Math.min(1, v)), Math.max(-1, Math.min(1, w))];
+}
+function sendDrive() { if (S && S.mode === "MANUAL") { const [v, w] = axes(); send({ type: "drive", v, w, slow: $("slow").checked || shift, seq: ++seq }); } }
+setInterval(sendDrive, 100);
+function hold(a) { heldKeys.add(a); document.querySelectorAll(".pad button").forEach(b => b.classList.toggle("held", heldKeys.has(b.dataset.a))); }
+function release(a) { if (a) heldKeys.delete(a); else heldKeys.clear(); document.querySelectorAll(".pad button").forEach(b => b.classList.toggle("held", heldKeys.has(b.dataset.a))); sendDrive(); }
 document.querySelectorAll(".pad button").forEach(b => {
   b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture(e.pointerId); hold(b.dataset.a); });
-  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, release);
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, () => release(b.dataset.a));
 });
 const KEYS = { w: "FORWARD", arrowup: "FORWARD", s: "BACK_UP", arrowdown: "BACK_UP", a: "TURN_LEFT", arrowleft: "TURN_LEFT", d: "TURN_RIGHT", arrowright: "TURN_RIGHT" };
 document.addEventListener("keydown", e => {
@@ -368,8 +377,8 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space") { e.preventDefault(); $("estop").click(); return; }
   const a = KEYS[e.key.toLowerCase()]; if (a) { e.preventDefault(); hold(a); }
 });
-document.addEventListener("keyup", e => { shift = e.shiftKey; const a = KEYS[e.key.toLowerCase()]; if (a && held === a) release(); });
-window.addEventListener("blur", release);
+document.addEventListener("keyup", e => { shift = e.shiftKey; const a = KEYS[e.key.toLowerCase()]; if (a) release(a); });
+window.addEventListener("blur", () => release());
 document.addEventListener("visibilitychange", () => { if (document.hidden) release(); });
 
 // ---- YOLO boxes over the video ----

@@ -1,0 +1,22 @@
+# LAN-only classroom/demo profile.  Run this on the host computer, then open
+# http://<host-lan-ip>:8000 from the responder's computer or phone.  It uses
+# only synthetic camera, fake motors, and simulated sensors.
+hw:
+  camera: synthetic
+  distance: simworld
+  motors: fake
+scene:
+  provider: sim
+perception:
+  yolo: {where: sim}
+voice:
+  provider: fake
+sim:
+  world: room_basic
+  fake_people: true
+server:
+  host: 0.0.0.0
+  open_browser: false
+  test_controls: true
+survivors:
+  data_dir: data/sim-remote
