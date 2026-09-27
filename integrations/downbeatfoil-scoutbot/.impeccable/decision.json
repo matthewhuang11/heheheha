@@ -1,0 +1,129 @@
+{
+  "title": "choose the dashboard's world",
+  "question": "The roll assigned the rescue beacon. Keep it, take an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Rescue beacon",
+      "kicker": "THE ROLL",
+      "lineage": "avalanche transceivers and handheld SAR locators",
+      "thesis": "The dashboard is the rescuer's handheld: an arrow and a distance that lead you to a buried person.",
+      "palette": ["#f2e41c", "#2a2b2e", "#b8c2a4", "#1d2219", "#e2352c"],
+      "materials": ["hi-vis molded shell", "reflective segment LCD with ghost segments", "rubber overmold"],
+      "viewport": "One instrument face: live camera in a window of the shell, a huge bearing arrow and distance to the nearest person, a segment mission clock, and a SEARCH / RETURN / SYNC mode slider.",
+      "risk": "Tips into toy skeuomorphism if the shell gets bevels and gloss instead of flat molded color.",
+      "raised": [
+        {"from": "challenger-cathode", "raise": "Every mission state is always on the screen as an unlit ghost segment; only the live one is struck dark."},
+        {"from": "challenger-darkroom", "raise": "The mission runs as fixed stations in order (deploy, search, return, sync), and survivor photos develop in when HQ syncs."},
+        {"from": "challenger-acetate", "raise": "Nothing eases: readouts snap segment by segment, like a real LCD refreshing."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "USAR spray marks",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "FEMA urban search-and-rescue structure and victim markings",
+      "thesis": "Every survivor is marked the way USAR teams spray-paint a searched room: an X with time, team, and count.",
+      "palette": ["#9a9791", "#ff5a1f", "#151515", "#f1eee6"],
+      "materials": ["poured concrete slab", "fluorescent spray paint with overspray", "cut stencils"],
+      "viewport": "The floor-plan map as a concrete slab with orange X-codes sprayed at each survivor; camera and controls stenciled at the edges.",
+      "risk": "Hazard orange on concrete is where most rescue-themed designs land; familiar by nature."
+    },
+    {
+      "id": "challenger-anime",
+      "label": "Crisis command wall",
+      "verdict": "competitive",
+      "lineage": "nineties mecha-anime command centers",
+      "thesis": "The mission as an emergency on a wall: monumental countdowns, condition bars, alarms that invert the frame.",
+      "palette": ["#000000", "#ff8a00", "#7cff4f", "#e0201b"],
+      "materials": ["phosphor type on black", "hazard-chevron bands", "seven-segment digits"],
+      "viewport": "A black field with a giant blackout countdown, a hex-tiled map, and framed label blocks leading out from a robot silhouette.",
+      "case": "Judges recognize it instantly and the countdown carries the blackout; loses on clarity and sits close to the dark-neon category default.",
+      "risk": "Reads as cosplay if the chevrons and glow outrun the actual data.",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-anime-command-center-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/pop-culture-shelf-anime-command-center.webp"
+    },
+    {
+      "id": "challenger-darkroom",
+      "label": "Darkroom safelight",
+      "verdict": "declined",
+      "lineage": "photographic darkroom under amber safelight",
+      "thesis": "Survivor photos develop in the tray as the robot's data syncs.",
+      "palette": ["#c8741a", "#8b8b86", "#111111", "#f2f0ea"],
+      "materials": ["amber safelight", "wet silver prints"],
+      "viewport": "Stations in order across the screen, prints emerging in the develop tray.",
+      "case": "Responders and judges don't identify with a darkroom, and amber-on-amber hurts the live video.",
+      "risk": "Everything is amber, so state color has nowhere to go.",
+      "kept": "Ordered mission stations and the develop-in reveal on sync.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-darkroom-safelight-bay-hero.webp"
+    },
+    {
+      "id": "challenger-cathode",
+      "label": "Cathode numerals",
+      "verdict": "declined",
+      "lineage": "nixie-tube decade counters",
+      "thesis": "Every possible value hangs present as a ghost; the live one is struck forward.",
+      "palette": ["#0c1220", "#ff7a1a", "#8a6a3a", "#ece6da"],
+      "materials": ["bronze anode gauze", "cathode glow"],
+      "viewport": "Numeral stacks for clock, distance, and survivor count behind a mesh.",
+      "case": "A lab curiosity to this audience, and the gauze fights the camera feed.",
+      "risk": "Warm glow on blue-black is close to the neon-dashboard default.",
+      "kept": "All states visible at once as ghosts, the live one struck.",
+      "hero": "https://impeccable.style/worlds/cards/operate-b-struck-cathode-gauze-hero.webp"
+    },
+    {
+      "id": "challenger-acetate",
+      "label": "Acetate manual",
+      "verdict": "declined",
+      "lineage": "boxed-software reference manuals",
+      "thesis": "Each panel is an acetate leaf hinged over a colored divider board.",
+      "palette": ["#e0b21c", "#f4f2ec", "#1b1b1b", "#d9432b"],
+      "materials": ["milk acetate", "tab dividers"],
+      "viewport": "A tab rail of mission sections down the edge, content on leaves.",
+      "case": "Nobody in a rescue scene reaches for a manual; it slows the live task.",
+      "risk": "Turns a live console into reading.",
+      "kept": "No easing anywhere: changes are hard two-frame steps.",
+      "hero": "https://impeccable.style/worlds/cards/rw-manual-acetate-tab-board-hero.webp"
+    },
+    {
+      "id": "challenger-hazard",
+      "label": "Industrial quotes",
+      "verdict": "declined",
+      "lineage": "industrial streetwear graphics",
+      "thesis": "Every zone labeled with its literal name in quotes, hazard stripes under what matters.",
+      "palette": ["#ffffff", "#111111", "#ff6a13"],
+      "materials": ["white cotton", "black nylon", "zip-tie tags"],
+      "viewport": "Stenciled label plates with 45-degree hazard bands.",
+      "case": "Fashion irony undercuts a rescue story in front of judges.",
+      "risk": "The quotes read as a joke about the product.",
+      "kept": "Diagonal stripes reserved for blocked or disabled states only.",
+      "hero": "https://impeccable.style/worlds/cards/textiles-weave-drape-fashion-industrial-quote-grammar-hero.webp"
+    },
+    {
+      "id": "challenger-storm",
+      "label": "Alphabet storm",
+      "verdict": "declined",
+      "lineage": "surreal typographic worlds",
+      "thesis": "Words condense into weather across the screen.",
+      "palette": ["#f7f6f2", "#0d0d0d", "#c9ccd1"],
+      "materials": ["monumental grotesk", "letter particles"],
+      "viewport": "Transcripts drifting as weather over a white field.",
+      "case": "No link to rescue work and it obscures live state.",
+      "risk": "Pure spectacle; the task disappears.",
+      "kept": "One type voice does all display work.",
+      "hero": "https://impeccable.style/worlds/cards/dream-surreal-impossible-worlds-alphabet-storm-hero.webp"
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code"},
+  "canon": true,
+  "canonCard": {
+    "label": "Mission control, played straight",
+    "thesis": "The dark robotics ops console, executed with full craft.",
+    "palette": ["#0e1116", "#161b22", "#e6edf3", "#2f81f7"],
+    "materials": ["dark panels", "hairline grid", "status pills"],
+    "viewport": "Video left, map and survivor list right, status pills across the top.",
+    "risk": "Looks like every other robotics dashboard at the expo."
+  },
+  "steer": true
+}

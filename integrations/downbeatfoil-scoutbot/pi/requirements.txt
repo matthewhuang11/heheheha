@@ -1,0 +1,7 @@
+# opencv, numpy, gpiozero come from apt (python3-opencv etc.); the venv uses --system-site-packages
+fastapi
+uvicorn
+httpx
+google-genai
+python-dotenv
+websockets>=14

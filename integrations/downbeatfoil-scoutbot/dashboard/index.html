@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>scoutbot</title>
+<style>
+  @font-face {
+    font-family: "Archivo";
+    src: url("/static/fonts/archivo-latin.woff2") format("woff2");
+    font-weight: 100 900;
+    font-stretch: 62% 125%;
+    font-display: swap;
+  }
+  :root {
+    --bg: #0e1015;
+    --tile: #181b22;
+    --tile-2: #20242d;
+    --line: #2a2f3a;
+    --text: #f1f3f6;
+    --muted: #a2abb6;
+    --faint: #6f7883;
+    --accent: #ff6b2c;
+    --search: #8b7dff;
+    --return: #f5b83d;
+    --ok: #3ecf8e;
+    --stop: #cf383e;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --face: "Archivo", system-ui, sans-serif;
+    --state: var(--muted);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 400 15px/1.4 var(--face); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--accent); color: #140a04; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* fills the screen when it fits, grows (and scrolls) when it doesn't: tiles never get crushed */
+  .app { min-height: 100%; max-width: 1600px; margin: 0 auto; padding: 14px 22px 18px; display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .title { text-align: center; }
+  .title h1 { margin: 0; font-size: 38px; font-weight: 800; font-stretch: 118%; letter-spacing: -0.02em; line-height: 1.1; }
+  .title p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+
+  .main { display: grid; grid-template-columns: 290px minmax(0, 1fr) 300px; gap: 16px; align-items: stretch; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
+  .col > * { flex-shrink: 0; }
+  .tile { background: var(--tile); border-radius: 18px; padding: 16px 18px; }
+  .label { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* status tile: the one thing to read from across the table */
+  .status { position: relative; overflow: hidden; flex: 1 0 auto; min-height: 150px; display: flex; flex-direction: column; justify-content: center; gap: 6px; transition: box-shadow 0.8s var(--ease); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--state) 55%, transparent); }
+  .status::before { content: ""; position: absolute; inset: 0; background: var(--state); opacity: 0.12; transition: background-color 0.8s var(--ease); }
+  .status > * { position: relative; }
+  .status .big { font-size: 40px; font-weight: 850; font-stretch: 115%; line-height: 1; color: var(--state); letter-spacing: -0.02em; transition: color 0.8s var(--ease); }
+  .status .what { font-size: 16px; color: var(--text); font-weight: 600; }
+  .status .timer { font-size: 15px; color: var(--muted); }
+  .status .timer b { color: var(--text); font-size: 22px; }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--state); margin-right: 8px; vertical-align: 2px; }
+  [data-station="search"] .dot { animation: pulse 1.4s var(--ease) infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--state) 70%, transparent); } 100% { box-shadow: 0 0 0 12px transparent; } }
+
+  .sensebar { display: flex; align-items: center; gap: 20px; background: var(--tile); border-radius: 14px; padding: 10px 18px; flex-wrap: wrap; }
+  .senses { display: flex; flex-wrap: wrap; gap: 6px 26px; }
+  .senses div { display: flex; flex-direction: column; }
+  .senses small { color: var(--muted); font-size: 12px; }
+  .senses b { font-size: 18px; font-weight: 700; }
+  .senses b.alert { color: var(--return); }
+  .senses b.heard { color: var(--accent); animation: blink 0.9s steps(2, jump-none) 3; }
+  .senses b.off { color: var(--faint, var(--muted)); font-weight: 500; font-size: 15px; }
+  .count { display: flex; align-items: baseline; gap: 12px; }
+  .count b { font-size: 64px; font-weight: 800; line-height: 0.95; color: var(--accent); }
+  .count span { color: var(--muted); font-size: 15px; }
+
+  #map { width: 100%; height: 150px; display: block; margin-top: 8px; }
+
+  /* live feed */
+  .feed { display: flex; flex-direction: column; gap: 8px; }
+  .video { position: relative; flex: 1; min-height: 300px; border-radius: 18px; overflow: hidden; background: #06070a; }
+  .video img { width: 100%; height: 100%; object-fit: contain; display: block; transition: opacity 0.5s var(--ease); }
+  .video.nocam img { opacity: 0; }
+  .novideo { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; color: var(--muted); gap: 4px; font-size: 15px; }
+  .novideo b { color: var(--text); font-size: 20px; }
+  .novideo[hidden] { display: none; }
+  .badge { position: absolute; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 12px; background: rgba(8, 9, 12, 0.78); backdrop-filter: blur(8px); font-size: 15px; font-weight: 700; transition: opacity 0.4s var(--ease), transform 0.4s var(--ease); }
+  .badge.off { opacity: 0; transform: translateY(6px); pointer-events: none; }
+  .rec { top: 14px; left: 14px; }
+  .rec i { width: 10px; height: 10px; border-radius: 50%; background: var(--stop); animation: blink 1.2s steps(2, jump-none) infinite; }
+  @keyframes blink { 50% { opacity: 0.25; } }
+  .target { left: 50%; bottom: 16px; transform: translateX(-50%); font-size: 17px; }
+  .target.off { transform: translate(-50%, 6px); }
+  .target svg { width: 24px; height: 24px; color: var(--accent); transition: transform 0.5s var(--ease); }
+  .feed .caption { text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* controls */
+  .cross { display: grid; grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(3, 62px); gap: 7px; justify-content: center; margin-top: 8px; }
+  .key { border: 0; border-radius: 16px; background: var(--tile-2); display: grid; place-items: center; transition: background-color 0.15s, transform 0.15s var(--ease); }
+  .key:hover { background: #2a2f3a; }
+  .key.down { background: var(--text); color: var(--bg); transform: scale(0.93); }
+  .key svg { width: 26px; height: 26px; }
+  .key[data-k="w"] { grid-column: 2; grid-row: 1; }
+  .key[data-k="a"] { grid-column: 1; grid-row: 2; }
+  .key[data-k="d"] { grid-column: 3; grid-row: 2; }
+  .key[data-k="s"] { grid-column: 2; grid-row: 3; }
+  .stop { grid-column: 2; grid-row: 2; border: 0; border-radius: 50%; background: var(--stop); color: #fff; font-weight: 850; font-size: 15px; letter-spacing: 0.02em; transition: transform 0.15s var(--ease), background-color 0.2s; }
+  .stop:hover { background: #b83137; }
+  .stop:active { transform: scale(0.92); }
+  .hint { text-align: center; color: var(--faint); font-size: 13px; margin-top: 8px; }
+  .col > .tile:last-child:not(.status) { flex: none; }
+
+  .mission { display: grid; gap: 8px; align-content: start; }
+  .mission button {
+    border: 0; border-radius: 16px; background: var(--tile-2); padding: 11px 16px; text-align: left;
+    font-size: 17px; font-weight: 800; display: flex; justify-content: space-between; align-items: center;
+    transition: background-color 0.3s var(--ease), color 0.3s var(--ease), transform 0.15s var(--ease);
+  }
+  .mission button small { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+  .mission button:hover { background: #2a2f3a; }
+  .mission button:active { transform: scale(0.98); }
+  .mission button[aria-pressed="true"] { background: var(--text); color: var(--bg); }
+  .mission button[aria-pressed="true"] small { color: #4b525d; }
+  .mission .n { font-size: 14px; font-weight: 700; opacity: 0.55; }
+
+  /* survivor strip */
+  .strip { background: var(--tile); border-radius: 18px; padding: 14px 16px 16px; }
+  .strip header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .strip header span { color: var(--muted); font-size: 14px; }
+  .cards { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .empty { color: var(--muted); font-size: 16px; padding: 18px 4px; }
+  .card { flex: none; width: 230px; border: 0; padding: 0; background: var(--tile-2); border-radius: 14px; overflow: hidden; text-align: left; animation: arrive 0.7s var(--ease) both; transition: transform 0.2s var(--ease), box-shadow 0.2s; }
+  .card:hover { transform: translateY(-3px); }
+  .card[aria-expanded="true"] { box-shadow: 0 0 0 3px var(--accent); }
+  @keyframes arrive { from { opacity: 0; transform: translateY(16px); filter: blur(6px); } }
+  .card .ph { height: 128px; background: #08090b; }
+  .card .ph img, .drawer .ph img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card .info { padding: 10px 12px 12px; display: grid; gap: 4px; }
+  .card .row1 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card .row1 b { font-size: 17px; font-weight: 800; }
+  .card .where { color: var(--muted); font-size: 13px; }
+  .tag { font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 7px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.03em; }
+  .tag.pending { background: rgba(139, 125, 255, 0.18); color: #c3bbff; }
+  .tag.immediate { background: var(--stop); color: #fff; }
+  .tag.delayed { background: var(--return); color: #231802; }
+  .tag.minor { background: var(--ok); color: #03220f; }
+  .tag.unknown { background: var(--line); color: var(--text); }
+  .latent img { filter: grayscale(1) contrast(0.5) brightness(1.3) blur(1.5px); }
+  .developing img { filter: none; transition: filter 2.6s var(--ease); }
+
+  /* detail drawer */
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: var(--tile); z-index: 5;
+    box-shadow: -20px 0 40px rgba(0, 0, 0, 0.45); transform: translateX(105%); transition: transform 0.45s var(--ease);
+    display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: none; }
+  .drawer header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px 12px; }
+  .drawer header b { font-size: 24px; font-weight: 800; }
+  .close { border: 0; background: var(--tile-2); width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; }
+  .close svg { width: 18px; height: 18px; }
+  .drawer .body { overflow: auto; padding: 0 20px 20px; display: grid; gap: 14px; align-content: start; }
+  .drawer .ph { border-radius: 14px; overflow: hidden; aspect-ratio: 4 / 3; background: #08090b; }
+  .said { font-size: 18px; line-height: 1.45; }
+  .said small, .sub { display: block; color: var(--muted); font-size: 13px; margin-bottom: 3px; }
+  .drawer audio { width: 100%; }
+  .report { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; font-size: 15px; }
+  .report dt { color: var(--muted); font-size: 12px; font-weight: 700; padding-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .report dd { margin: 0; }
+  .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { border: 0; border-radius: 12px; background: var(--tile-2); padding: 11px 16px; font-weight: 700; }
+  .btn:hover { background: #2a2f3a; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .chat { display: flex; gap: 6px; }
+  .chat input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 12px; padding: 11px 12px; font: 15px var(--face); }
+  .convo { display: grid; gap: 4px; font-size: 15px; }
+  .convo .r { color: var(--accent); }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none; background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-weight: 700; transition: opacity 0.35s var(--ease), transform 0.35s var(--ease); z-index: 9; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* short laptop screens: tighten everything so the whole dashboard still fits without scrolling */
+  @media (min-width: 1151px) and (max-height: 1000px) {
+    .app { padding: 10px 20px 12px; gap: 10px; }
+    .title h1 { font-size: 28px; }
+    .title p { display: none; }
+    .main, .col { gap: 10px; }
+    .tile { padding: 12px 16px; }
+    .status { min-height: 120px; }
+    .status .big { font-size: 34px; }
+    .count b { font-size: 48px; }
+    #map { height: 110px; }
+    .cross { grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); gap: 6px; margin-top: 6px; }
+    .key svg { width: 22px; height: 22px; }
+    .stop { font-size: 13px; }
+    .hint { display: none; }
+    .mission { gap: 6px; }
+    .mission button { padding: 8px 14px; font-size: 16px; }
+    .mission button small { font-size: 12px; }
+    .sensebar { padding: 8px 16px; }
+    .senses b { font-size: 16px; }
+    .strip { padding: 10px 14px 12px; }
+    .strip header { margin-bottom: 6px; }
+    .card { width: 200px; }
+    .card .ph { height: 90px; }
+    .card .info { padding: 8px 10px 10px; }
+  }
+
+  @media (max-width: 1150px) {
+    .app { height: auto; }
+    .main { grid-template-columns: 1fr 1fr; }
+    .feed { grid-column: 1 / -1; order: -1; }
+    .video { aspect-ratio: 16 / 9; flex: none; }
+  }
+  @media (max-width: 640px) {
+    .app { padding: 10px; }
+    .title h1 { font-size: 30px; }
+    .main { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app" data-station="standby">
+  <header class="title"><h1>scoutbot</h1><p>search-and-rescue scout robot</p></header>
+
+  <main class="main">
+    <section class="col" aria-label="mission status">
+      <div class="tile status" aria-live="polite">
+        <span class="label"><span class="dot"></span>status</span>
+        <div class="big" id="big">connecting</div>
+        <div class="what" id="what">looking for the robot</div>
+        <div class="timer" id="timer" hidden><b id="clock">0:00</b> until it heads back</div>
+      </div>
+      <div class="tile">
+        <span class="label">survivors found</span>
+        <div class="count"><b id="count">0</b><span id="triaged"></span></div>
+      </div>
+      <div class="tile">
+        <span class="label">map</span>
+        <canvas id="map" aria-label="map of the robot's path and survivors"></canvas>
+      </div>
+    </section>
+
+    <section class="feed" aria-label="live camera">
+      <div class="video nocam" id="videobox">
+        <img id="video" alt="" aria-label="live camera from the robot">
+        <div class="novideo" id="novideo" hidden><b>no camera connected</b>plug a usb camera into the robot</div>
+        <div class="badge rec off" id="rec"><i></i>no connection · recording on the robot</div>
+        <div class="badge target off" id="target">
+          <svg viewBox="0 0 24 24" id="arrow" aria-hidden="true"><path d="M12 3 19 20 12 16 5 20z" fill="currentColor"/></svg>
+          <span id="targettext"></span>
+        </div>
+      </div>
+      <div class="sensebar"><span class="label">robot senses</span><div class="senses" id="senses"></div></div>
+    </section>
+
+    <section class="col" aria-label="controls">
+      <div class="tile">
+        <span class="label">controls</span>
+        <div class="cross" role="group" aria-label="drive">
+          <button class="key" data-k="w" aria-label="forward"><svg viewBox="0 0 24 24"><path d="M5 15l7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="key" data-k="a" aria-label="turn left"><svg viewBox="0 0 24 24"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="stop" id="estop">stop</button>
+          <button class="key" data-k="d" aria-label="turn right"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="key" data-k="s" aria-label="reverse"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="hint">or use w a s d · space to stop</div>
+      </div>
+      <div class="mission" role="group" aria-label="mission">
+        <button data-m="search" aria-pressed="false"><span>send it in<small>goes dark and searches</small></span><span class="n">1</span></button>
+        <button data-m="return" aria-pressed="false"><span>bring it back<small>retraces its path</small></span><span class="n">2</span></button>
+        <button data-m="sync" aria-pressed="false"><span>back in range<small>sends everything to hq</small></span><span class="n">3</span></button>
+      </div>
+    </section>
+  </main>
+
+  <section class="strip" aria-label="survivors">
+    <header><span class="label">survivors</span><span>tap a photo for details</span></header>
+    <div class="cards" id="cards"></div>
+  </section>
+</div>
+
+<aside class="drawer" id="drawer" aria-label="survivor details">
+  <header><b id="dtitle"></b><button class="close" id="dclose" aria-label="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></header>
+  <div class="body" id="dbody"></div>
+</aside>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+let S = null;
+
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200); }
+async function post(url, body) {
+  try {
+    const r = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body || {})});
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) toast(data.detail || 'the robot refused that');
+    return data;
+  } catch { toast('no link to the robot'); return {}; }
+}
+
+/* ---- driving: resend held keys every 150 ms (the robot stops itself after 500 ms of silence) ---- */
+const held = new Set();
+function driveVec() {
+  let t = 0, r = 0;
+  if (held.has('w')) t += 0.8; if (held.has('s')) t -= 0.8;
+  if (held.has('d')) r += 0.6; if (held.has('a')) r -= 0.6;
+  return {throttle: t, turn: r};
+}
+setInterval(() => { if (held.size) post('/api/drive', driveVec()); }, 150);
+function press(k, down) {
+  if (k.length !== 1 || !'wasd'.includes(k)) return;
+  down ? held.add(k) : held.delete(k);
+  document.querySelectorAll('.key').forEach(b => b.classList.toggle('down', held.has(b.dataset.k)));
+  if (!held.size) post('/api/stop');
+}
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.repeat) return;
+  if (e.key === ' ') { held.clear(); post('/api/stop'); e.preventDefault(); return; }
+  if (e.key === 'Escape') closeDrawer();
+  press(e.key.toLowerCase(), true);
+});
+addEventListener('keyup', e => press(e.key.toLowerCase(), false));
+addEventListener('blur', () => { if (held.size) { held.clear(); post('/api/stop'); } });
+document.querySelectorAll('.key').forEach(b => {
+  b.onpointerdown = () => press(b.dataset.k, true);
+  b.onpointerup = b.onpointerleave = b.onpointercancel = () => held.has(b.dataset.k) && press(b.dataset.k, false);
+});
+$('#estop').onclick = () => { held.clear(); post('/api/stop'); toast('stopped'); };
+const MISSION = {search: '/api/mission/start', return: '/api/mission/return', sync: '/api/mission/end'};
+document.querySelectorAll('.mission button').forEach(b => b.onclick = () => post(MISSION[b.dataset.m]));
+
+/* ---- status ---- */
+const COLORS = {standby: 'var(--muted)', search: 'var(--search)', return: 'var(--return)', sync: 'var(--accent)', done: 'var(--ok)'};
+const DOING = {manual: 'you are driving', explore: 'exploring on its own', avoid: 'steering around an obstacle', approach: 'heading to a person',
+  contact: 'talking to a survivor', turn_away: 'moving on', blind: 'sensor lost, holding still',
+  scan: 'heard a sound, looking around'};
+function station() {
+  const a = S.auto.state;
+  if (a === 'return' || (a === 'done' && S.mode === 'blackout')) return 'return';
+  if (S.mode === 'blackout') return 'search';
+  if (S.victims.some(v => v.status === 'pending')) return 'sync';
+  if (S.victims.length) return 'done';
+  return 'standby';
+}
+function renderStatus() {
+  const st = station(), n = S.victims.length, done = S.victims.filter(v => v.status === 'processed').length;
+  $('#app').dataset.station = st;
+  $('#app').style.setProperty('--state', COLORS[st]);
+  const [big, what] = {
+    standby: ['ready', 'press send it in'],
+    search: ['searching', 'no connection · ' + (DOING[S.auto.state] || S.auto.state)],
+    return: [S.auto.state === 'done' ? 'back' : 'returning', S.auto.state === 'done' ? 'at the entry · press back in range' : 'driving back to the entry'],
+    sync: ['syncing', `sending survivors to hq · ${done} of ${n} done`],
+    done: ['all clear', `every survivor is with hq${S.mode === 'no-brain' ? ' (no ai, template reports)' : ''}`],
+  }[st];
+  $('#big').textContent = big;
+  $('#what').textContent = what;
+  const t = S.auto.mission_left_s;
+  $('#timer').hidden = t == null || st !== 'search';
+  if (t != null) $('#clock').textContent = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  $('#rec').classList.toggle('off', st !== 'search');
+  $('#count').textContent = n;
+  $('#triaged').textContent = n ? `${done} triaged` : '';
+  document.querySelectorAll('.mission button').forEach(b => b.setAttribute('aria-pressed', b.dataset.m === st || (b.dataset.m === 'sync' && st === 'done')));
+}
+
+/* ---- video ---- */
+const vid = $('#video');
+let streamOn = false;
+function setStream(on) {
+  if (on === streamOn) return;
+  streamOn = on;
+  if (on) vid.src = '/stream?' + Date.now(); else vid.removeAttribute('src');
+}
+vid.onerror = () => { if (streamOn) { streamOn = false; setTimeout(() => S?.camera_ok && setStream(true), 2000); } };
+function renderVideo() {
+  $('#novideo').hidden = S.camera_ok;
+  $('#videobox').classList.toggle('nocam', !S.camera_ok);
+  setStream(S.camera_ok);
+  const dets = S.detector.detections;
+  const near = dets.length ? dets.reduce((a, b) => a.dist_m < b.dist_m ? a : b) : null;
+  $('#target').classList.toggle('off', !near);
+  if (near) {
+    $('#arrow').style.transform = `rotate(${Math.max(-80, Math.min(80, near.bearing_deg))}deg)`;
+    $('#targettext').textContent = `person ${near.dist_m.toFixed(1)} m ${Math.abs(near.bearing_deg) < 8 ? 'ahead' : near.bearing_deg < 0 ? 'to the left' : 'to the right'}`;
+  }
+}
+
+/* ---- senses ---- */
+function renderSenses() {
+  const e = S.env || {}, d = S.sonars.dist, pi = S.pi || {};
+  const dist = k => d[k] == null ? ['—', 'off'] : d[k] >= 4 ? ['clear', ''] : [Math.round(d[k] * 100) + ' cm', d[k] < 0.35 ? 'alert' : ''];
+  const cells = [
+    ...Object.keys(d).map(k => [k, ...dist(k)]),
+    ['air', e.temp_c == null ? 'no reading' : `${Math.round(e.temp_c)}°C · ${Math.round(e.humidity)}%`, e.temp_c == null ? 'off' : e.hot ? 'alert' : ''],
+    ['sound', !e.sound_present ? 'no sensor' : e.heard_sound ? 'heard something' : 'quiet', !e.sound_present ? 'off' : e.heard_sound ? 'heard' : ''],
+    ['camera', S.camera_ok ? `${S.detector.fps.toFixed(1)} fps` : 'off', S.camera_ok ? '' : 'off'],
+    ['people', !S.camera_ok ? '—' : S.detector.detections.length ? `${S.detector.detections.length} in view` : 'none in view', !S.camera_ok ? 'off' : S.detector.detections.length ? 'heard' : ''],
+    ['heading', `${Math.round(S.motors.pose.heading)}°`, ''],
+    ['pi', pi.cpu_c == null ? '—' : `${Math.round(pi.cpu_c)}°C · ${pi.low_power ? 'low power' : 'power ok'}`, pi.cpu_c == null ? 'off' : pi.low_power || pi.cpu_c > 75 ? 'alert' : ''],
+  ];
+  const html = cells.map(([k, v, c]) => `<div><small>${k}</small><b class="${c}">${v}</b></div>`).join('');
+  if ($('#senses').innerHTML !== html) $('#senses').innerHTML = html;
+}
+
+/* ---- survivors ---- */
+const seen = new Map(), cardsEl = $('#cards'), pings = [];
+let openId = null;
+const ago = t => { const s = Math.max(0, Math.round(Date.now() / 1000 - t)); return s < 60 ? 'just now' : Math.round(s / 60) + ' min ago'; };
+const priority = v => (v.report?.match(/PRIORITY:\s*(IMMEDIATE|DELAYED|MINOR|UNKNOWN)/i)?.[1] || 'unknown').toLowerCase();
+const tag = v => v.status !== 'processed' ? `<span class="tag pending">on robot</span>` : `<span class="tag ${priority(v)}">${priority(v) === 'unknown' ? 'triaged' : priority(v)}</span>`;
+const photoState = v => v.status !== 'processed' ? 'latent' : seen.get(v.id) === 'pending' ? 'developing' : '';
+const num = v => S.victims.indexOf(v) + 1;
+
+function renderCards() {
+  const vs = S.victims;
+  if (!vs.length) { if (!cardsEl.querySelector('.empty')) cardsEl.innerHTML = `<div class="empty">nobody found yet. press <b>send it in</b> and the robot searches on its own.</div>`; return; }
+  cardsEl.querySelector('.empty')?.remove();
+  const ids = new Set(vs.map(v => v.id));
+  cardsEl.querySelectorAll('.card').forEach(c => ids.has(c.dataset.id) || c.remove());
+  vs.forEach((v, i) => {
+    let c = cardsEl.querySelector(`.card[data-id="${v.id}"]`);
+    if (!c) {
+      c = document.createElement('button');
+      c.className = 'card'; c.dataset.id = v.id;
+      c.innerHTML = `<div class="ph"><img alt=""></div><div class="info"><div class="row1"><b></b><span class="t"></span></div><div class="where"></div></div>`;
+      c.onclick = () => openDrawer(v.id);
+      if (!seen.has(v.id)) pings.push({id: v.id, t: performance.now()});
+    }
+    if (cardsEl.children[i] !== c) cardsEl.insertBefore(c, cardsEl.children[i] || null);
+    c.setAttribute('aria-expanded', openId === v.id);
+    c.querySelector('b').textContent = `survivor ${num(v)}`;
+    c.querySelector('.where').textContent = `${v.x} m east · ${v.y} m north · ${ago(v.found_at)}`;
+    const s = [v.status, v.report, v.sightings].join('|');
+    if (c.dataset.sig !== s) {
+      c.dataset.sig = s;
+      const ph = c.querySelector('.ph'), src = `/api/victims/${v.id}/snap?${v.sightings}`;
+      ph.className = 'ph ' + photoState(v);
+      if (ph.firstElementChild.getAttribute('src') !== src) ph.firstElementChild.src = src;
+      c.querySelector('.t').innerHTML = tag(v);
+    }
+  });
+  if (openId) renderDrawer();
+  vs.forEach(v => seen.set(v.id, v.status === 'processed' ? 'processed' : 'pending'));
+}
+
+function reportHtml(text) {
+  const rows = text.split('\n').map(l => l.match(/^\s*([A-Z][A-Z ]+):\s*(.*)$/)).filter(Boolean);
+  return rows.length ? `<dl class="report">${rows.map(([, k, val]) => `<dt>${esc(k)}</dt><dd>${esc(val)}</dd>`).join('')}</dl>` : `<p>${esc(text)}</p>`;
+}
+function openDrawer(id) { openId = id; $('#drawer').dataset.sig = ''; renderDrawer(); $('#drawer').classList.add('open'); renderCards(); }
+function closeDrawer() { openId = null; $('#drawer').classList.remove('open'); if (S) renderCards(); }
+$('#dclose').onclick = closeDrawer;
+function renderDrawer() {
+  const v = S.victims.find(x => x.id === openId), d = $('#drawer'), body = $('#dbody');
+  if (!v) return closeDrawer();
+  const s = [v.id, v.status, v.transcript, v.report, v.audio, v.conversation.length, v.contacted].join('|');
+  const busy = body.contains(document.activeElement) || (body.querySelector('audio') && !body.querySelector('audio').paused);
+  if (d.dataset.sig === s || busy) return;
+  d.dataset.sig = s;
+  $('#dtitle').innerHTML = `survivor ${num(v)} ${tag(v)}`;
+  body.innerHTML = `
+    <div class="ph ${photoState(v)}"><img src="/api/victims/${v.id}/snap?${v.sightings}" alt="the robot's photo of this survivor"></div>
+    <div class="sub">${v.x} m east, ${v.y} m north of the entry · found ${ago(v.found_at)}</div>
+    ${v.transcript ? `<div class="said"><small>they said</small>“${esc(v.transcript)}”</div>` : ''}
+    ${v.audio ? `<audio controls preload="none" src="/api/victims/${v.id}/audio"></audio>` : ''}
+    ${v.report ? reportHtml(v.report) + `<div class="sub">written by ${esc(v.report_source)}</div>`
+               : `<div class="sub">${v.contacted ? 'answer recorded · the report is written once the robot is back in range' : 'the robot has not spoken to them yet'}</div>`}
+    ${v.conversation.length ? `<div class="convo">${v.conversation.map(m => `<div class="${m.role === 'robot' ? 'r' : ''}">${m.role === 'robot' ? 'robot' : 'survivor'}: ${esc(m.text)}</div>`).join('')}</div>` : ''}
+    <div class="acts">
+      ${v.contacted ? '' : `<button class="btn" data-act="contact">talk to them</button>`}
+      <button class="btn" data-act="report">${v.report ? 'redo report' : 'write report'}</button>
+    </div>
+    <form class="chat"><input placeholder="type what they said to reply" aria-label="what the survivor said"><button class="btn">send</button></form>`;
+  const ph = body.querySelector('.ph');
+  if (ph.classList.contains('developing')) { ph.className = 'ph latent'; void ph.offsetWidth; ph.className = 'ph developing'; }
+}
+$('#dbody').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b || !openId) return;
+  b.disabled = true;
+  if (b.dataset.act === 'contact') { await post(`/api/victims/${openId}/contact`); toast('the robot is talking to them'); }
+  if (b.dataset.act === 'report') { b.textContent = 'writing…'; await post(`/api/victims/${openId}/report`); }
+  $('#drawer').dataset.sig = ''; poll();
+});
+$('#dbody').addEventListener('submit', async e => {
+  e.preventDefault();
+  const i = e.target.querySelector('input'); if (!i.value.trim()) return;
+  const text = i.value; i.value = ''; i.blur();
+  await post(`/api/victims/${openId}/heard`, {text}); $('#drawer').dataset.sig = ''; poll();
+});
+
+/* ---- map ---- */
+const canvas = $('#map'), g = canvas.getContext('2d'), trail = [];
+let shown = {x: 0, y: 0, h: 0}, span = 4;
+function drawMap(now) {
+  requestAnimationFrame(drawMap);
+  if (!S) return;
+  const dpr = devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const p = S.motors.pose, k = 0.12;
+  shown.x += (p.x - shown.x) * k; shown.y += (p.y - shown.y) * k;
+  shown.h += (((p.heading - shown.h + 540) % 360) - 180) * k;
+  const pts = [p, ...S.victims, ...trail];
+  const want = Math.max(3, ...pts.map(q => Math.max(Math.abs(q.x) * H / W, Math.abs(q.y)))) * 1.25;
+  span = want > span ? want : span + (want - span) * 0.05;
+  const px = x => W / 2 + x / span * H / 2, py = y => H / 2 - y / span * H / 2;
+  g.clearRect(0, 0, W, H);
+  const step = span > 12 ? 5 : span > 6 ? 2 : 1;
+  g.fillStyle = '#2a2f3a';
+  for (let x = -Math.ceil(span * W / H); x <= span * W / H; x += step)
+    for (let y = -Math.ceil(span); y <= span; y += step) { g.beginPath(); g.arc(px(x), py(y), 1.2, 0, 7); g.fill(); }
+  if (trail.length > 1) {
+    g.strokeStyle = 'rgba(162,171,182,0.5)'; g.lineWidth = 2; g.lineJoin = 'round'; g.beginPath();
+    trail.forEach((q, i) => i ? g.lineTo(px(q.x), py(q.y)) : g.moveTo(px(q.x), py(q.y))); g.stroke();
+  }
+  g.strokeStyle = '#a2abb6'; g.lineWidth = 2; g.strokeRect(px(0) - 5, py(0) - 5, 10, 10);
+  for (const v of S.victims) {
+    const x = px(v.x), y = py(v.y), ping = pings.find(q => q.id === v.id);
+    if (ping) { const t = (now - ping.t) / 1600; if (t < 1) { g.strokeStyle = `rgba(255,107,44,${1 - t})`; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 8 + t * 24, 0, 7); g.stroke(); } }
+    g.fillStyle = v.status === 'processed' ? '#ff6b2c' : '#8b7dff';
+    g.beginPath(); g.arc(x, y, openId === v.id ? 10 : 8.5, 0, 7); g.fill();
+    g.fillStyle = '#0e1015'; g.font = '800 11px Archivo, system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(num(v), x, y + 0.5);
+  }
+  g.save(); g.translate(px(shown.x), py(shown.y)); g.rotate(shown.h * Math.PI / 180);
+  g.fillStyle = '#f1f3f6'; g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill();
+  g.restore();
+}
+requestAnimationFrame(drawMap);
+
+/* ---- poll ---- */
+async function poll() {
+  try { S = await (await fetch('/api/state')).json(); }
+  catch { $('#app').style.setProperty('--state', 'var(--stop)'); $('#big').textContent = 'offline'; $('#what').textContent = 'no link to the robot · check the hotspot'; return; }
+  const p = S.motors.pose, last = trail[trail.length - 1];
+  if (!last || Math.hypot(last.x - p.x, last.y - p.y) > 0.05) trail.push({x: p.x, y: p.y});
+  if (trail.length > 1500) trail.shift();
+  renderStatus(); renderVideo(); renderSenses(); renderCards();
+}
+setInterval(poll, 700); poll();
+</script>
+</body>
+</html>

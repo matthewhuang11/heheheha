@@ -1,0 +1,69 @@
+<svg viewBox="0 0 680 560" width="1360" height="1120" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Arial, sans-serif">
+<rect width="680" height="560" fill="#ffffff"/>
+<text x="20" y="26" font-size="16" font-weight="600" fill="#2C2C2A">scoutbot motor wiring: Pi 4 + L298N + 4WD TT motors</text>
+<g fill="#F1EFE8" stroke="#888780" stroke-width="1">
+<rect x="20" y="40" width="170" height="300" rx="8"/>
+<rect x="270" y="40" width="170" height="300" rx="8"/>
+<rect x="520" y="70" width="140" height="90" rx="8"/>
+<rect x="520" y="180" width="140" height="100" rx="8"/>
+<rect x="20" y="400" width="170" height="56" rx="8"/>
+<rect x="270" y="400" width="170" height="56" rx="8"/>
+</g>
+<g font-size="14" font-weight="600" fill="#2C2C2A">
+<text x="34" y="64">Raspberry Pi 4</text>
+<text x="284" y="64">L298N driver</text>
+<text x="590" y="108" text-anchor="middle">Left motors</text>
+<text x="590" y="222" text-anchor="middle">Right motors</text>
+<text x="105" y="424" text-anchor="middle">USB-C power bank</text>
+<text x="355" y="424" text-anchor="middle">Motor battery</text>
+</g>
+<g font-size="12" fill="#444441">
+<text x="182" y="84" text-anchor="end">pin 32 · GPIO 12</text>
+<text x="182" y="114" text-anchor="end">pin 11 · GPIO 17</text>
+<text x="182" y="144" text-anchor="end">pin 13 · GPIO 27</text>
+<text x="182" y="174" text-anchor="end">pin 15 · GPIO 22</text>
+<text x="182" y="204" text-anchor="end">pin 16 · GPIO 23</text>
+<text x="182" y="234" text-anchor="end">pin 33 · GPIO 13</text>
+<text x="182" y="294" text-anchor="end">pin 34 · GND</text>
+<text x="278" y="84">ENA (jumper off)</text>
+<text x="278" y="114">IN1</text>
+<text x="278" y="144">IN2</text>
+<text x="278" y="174">IN3</text>
+<text x="278" y="204">IN4</text>
+<text x="278" y="234">ENB (jumper off)</text>
+<text x="432" y="104" text-anchor="end">OUT1</text>
+<text x="432" y="134" text-anchor="end">OUT2</text>
+<text x="432" y="204" text-anchor="end">OUT3</text>
+<text x="432" y="264" text-anchor="end">OUT4</text>
+<text x="310" y="330" text-anchor="middle">GND</text>
+<text x="380" y="330" text-anchor="middle">12V</text>
+<text x="420" y="312" text-anchor="middle">5V</text>
+<text x="420" y="330" text-anchor="middle">empty</text>
+<text x="590" y="130" text-anchor="middle">2 in parallel</text>
+<text x="590" y="244" text-anchor="middle">2 in parallel</text>
+<text x="105" y="444" text-anchor="middle">Pi only</text>
+<text x="355" y="444" text-anchor="middle">2×18650 or 6×AA</text>
+</g>
+<g stroke="#7F77DD" stroke-width="2.5" fill="none">
+<line x1="190" y1="80" x2="270" y2="80"/><line x1="190" y1="110" x2="270" y2="110"/>
+<line x1="190" y1="140" x2="270" y2="140"/><line x1="190" y1="170" x2="270" y2="170"/>
+<line x1="190" y1="200" x2="270" y2="200"/><line x1="190" y1="230" x2="270" y2="230"/>
+</g>
+<g stroke="#1D9E75" stroke-width="2.5" fill="none">
+<line x1="440" y1="100" x2="520" y2="100"/><line x1="440" y1="130" x2="520" y2="130"/>
+<line x1="440" y1="200" x2="520" y2="200"/><line x1="440" y1="260" x2="520" y2="260"/>
+</g>
+<g stroke="#888780" stroke-width="2.5" fill="none">
+<path d="M190 290 L230 290 L230 370 L310 370 L310 340"/><line x1="310" y1="400" x2="310" y2="370"/>
+</g>
+<g stroke="#E24B4A" stroke-width="2.5" fill="none">
+<line x1="380" y1="400" x2="380" y2="340"/><line x1="105" y1="400" x2="105" y2="340"/>
+</g>
+<g font-size="12" fill="#444441">
+<line x1="40" y1="496" x2="64" y2="496" stroke="#7F77DD" stroke-width="2.5"/><text x="72" y="500">Control signal</text>
+<line x1="190" y1="496" x2="214" y2="496" stroke="#1D9E75" stroke-width="2.5"/><text x="222" y="500">Motor wire</text>
+<line x1="320" y1="496" x2="344" y2="496" stroke="#E24B4A" stroke-width="2.5"/><text x="352" y="500">Power +</text>
+<line x1="440" y1="496" x2="464" y2="496" stroke="#888780" stroke-width="2.5"/><text x="472" y="500">Shared ground</text>
+<text x="20" y="534">Pi GND and battery − share the L298N GND terminal. Never connect L298N 5V to the Pi. Wire with the battery unplugged.</text>
+</g>
+</svg>

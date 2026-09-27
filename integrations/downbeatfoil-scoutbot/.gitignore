@@ -1,0 +1,13 @@
+.env
+__pycache__/
+.venv/
+pi/data/
+pi/models/*.onnx
+tools/.venv/
+*.pt
+# secrets and generated files for the cloud piece
+cloud/.tokens
+cloud/dashboard-link.txt
+cloud/data/
+cloud/dashboard/
+docs/*.zip

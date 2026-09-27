@@ -17,6 +17,10 @@ finds people, and lets a responder see, drive and talk to survivors from a lapto
 The AI never drives: Gemini, YOLO and Ollama only describe what they see, and plain rules decide, through a safety gate.
 Gemini, ElevenLabs and the survivor databases are used when there is internet. Ollama on the laptop takes over when there isn't.
 
+## Upstream Scoutbot reference
+
+The public [Downbeatfoil/scoutbot](https://github.com/Downbeatfoil/scoutbot) source has been imported at [`integrations/downbeatfoil-scoutbot/`](integrations/downbeatfoil-scoutbot/). The active, safety-gated disaster-response interface is the top-level `scoutbot/` application. See its [integration note](integrations/downbeatfoil-scoutbot/INTEGRATION.md) for the source revision, architecture mapping, and local control workflow.
+
 ## The start menu
 
 `./start.sh` / `start.command` / `start.bat` (or `python -m scoutbot.start`) shows:
