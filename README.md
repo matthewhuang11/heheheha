@@ -65,6 +65,11 @@ The default `grok-4.3-latest` uses xAI's OpenAI-compatible HTTPS API with JSON
 output, bounded retries, and a 15-second timeout. Gemini remains the provider for
 survivor replies and triage (`GEMINI_TALK_MODEL` / `GEMINI_MODEL`).
 
+If xAI returns HTTP 400 with `Incorrect API key provided`, the request reached
+xAI but that key value is invalid or revoked; it is not a model, image, or
+request-format error. In <https://console.x.ai/>, create or verify an active API
+key, replace only `XAI_API_KEY` in `.env`, and restart Scoutbot.
+
 ## Open the dashboard on a phone or another laptop
 
 Start with `--share` (or answer **y** in the menu). It prints something like:
