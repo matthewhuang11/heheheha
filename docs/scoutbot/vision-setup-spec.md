@@ -49,7 +49,7 @@ Key facts from the code that this spec depends on:
 - An unhealthy camera is treated like a missing camera: sensors only, speed capped at slow. So a bad picture costs speed, not safety.
 - "Where" is just thirds of the image width: left under 1/3, right over 2/3. "Near / mid / far" comes from box height as a fraction of image height (`near_frac` 0.5, `mid_frac` 0.2).
 - The survivor position guess assumes a side bearing of 25 degrees for left/right and fixed distances: near 70 cm, mid 200 cm, far 400 cm (`survivors.bearing_deg`, `survivors.dist_cm`). These are guesses until measured on the real camera.
-- The camera is a GoPro (confirmed by Matthew, 2026-09-27; exact model still to record). The code today only knows how to open ordinary video devices through OpenCV (`open_best_camera` tries indexes 0 to 3). A GoPro on a Pi does not show up that way, so a GoPro-specific camera source is needed. See section 3.1.
+- The camera is a GoPro (confirmed by Matthew, 2026-09-27; exact model still to record). A GoPro configured in **USB webcam/UVC mode** appears as an ordinary video device and uses `hw.camera: opencv`. A GoPro using its network stream still needs its model-specific URL/source configuration. The new `hw.camera: picamera2` source is for a ribbon-cable Pi Camera Module, not a GoPro.
 
 ## 3. Setup steps and checks
 
@@ -193,16 +193,16 @@ Each of these should be tested on purpose, with the wheels off the ground first:
 - [ ] All five failure tests in section 4 pass
 - [ ] Sample frames and measurements saved (not committed if they show people)
 
-## 6. Small code additions this spec proposes
+## 6. Implemented setup support
 
-| # | Change | Why |
+| # | Change | Status |
 | --- | --- | --- |
-| V1 | `hw.camera: picamera2` source in `scoutbot/hw/camera_opencv.py` (or a new file), chosen in `pi.yaml` | Ribbon cameras do not open through plain OpenCV on current Pi OS |
-| V2 | `python -m scoutbot.tools.vision_check --profile pi`: runs camcheck, health stats, YOLO fps, and stream delay test, then prints a pass/fail table matching section 5 | One command instead of five |
-| V3 | `--log-boxes` on `yolo_bench` (if not already merged) and a small script that turns the log into suggested `near_frac`, `mid_frac` | Calibration in 3.6 |
-| V4 | Expose camera stats in `state()`: capture fps, stream fps, last frame age, camera type and index | Dashboard shows problems before the operator has to guess |
-| V5 | Fix `CAMERA_INDEX` handling for the `pi` profile (documented in 3.1) or document clearly | Avoids confusion on the robot |
-| V6 | `--record` a 60 s clip in the demo room and keep it as a regression set for `hw.camera: folder` replay | Repeatable tuning without a person standing there |
+| V1 | `hw.camera: picamera2` for a ribbon Pi Camera Module, BGR conversion, lazy import | Implemented. Set `hw.camera: picamera2` only when the physical camera is a Pi Camera Module and `picamera2` is installed. GoPro USB webcam mode remains `opencv`. |
+| V2 | `python -m scoutbot.tools.vision_check --profile pi` | Implemented. Measures health, brightness, contrast, sharpness, capture FPS, saves two samples, and runs the configured on-device YOLO benchmark. Glass-to-glass delay remains a required manual stopwatch check. |
+| V3 | `yolo_bench --log-boxes` and distance calibration | Already implemented. `scoutbot.tools.distance_tune` captures the distance-test set; `yolo_bench --log-boxes` prints normalized box heights. |
+| V4 | Camera metrics in `Runtime.state()` | Implemented as `vision.camera_type`, `camera_index`, `capture_fps`, `last_frame_age`, and `stream_fps_target`; the dashboard displays source and capture FPS. |
+| V5 | Pi `CAMERA_INDEX` override | Implemented. `CAMERA_INDEX` now applies to `pi` as well as laptop profiles. |
+| V6 | Record / folder replay | Already implemented through `--record` and `hw.camera: folder`. Capture a 60 s real-room clip after the hardware setup passes, then retain an approved non-sensitive clip as a local regression fixture. |
 
 ## 7. Open questions
 
