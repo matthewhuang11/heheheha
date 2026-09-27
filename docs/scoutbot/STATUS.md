@@ -6,17 +6,17 @@ Rules: edit ONLY your own section; update on every merge to main, when blocked, 
 
 ---
 
-## L – Live   (phase 2; updated 19:11 EDT, branch agent/live @ 2336892)
+## L – Live   (phase 2; updated 20:31 EDT, branch agent/live)
 Done (on main): xAI scene provider merged as `12c61ce`: Grok 4.3 image requests use xAI's OpenAI-compatible HTTPS endpoint, a fixed trusted host, bounded retry/timeout, and the existing `SceneReport` validation. Laptop config selects `scene.provider: xai`; Gemini remains reply/triage only. Main validation: 165 tests passed in 18.50 s; 20-second sim had 1 survivor, 0 contacts, 0 watchdog trips.
-Done (on my branch, not merged yet): -
-Doing now: xAI provider is merged; resume remaining live-service validation.
-Next: Configure and rerun the camera/phone and other blocked live-service acceptance checks.
-Blocked on: This worktree's minimal xAI fixture request found `XAI_API_KEY` unavailable at runtime, so a live Grok scene result is not claimed. Ollama, ElevenLabs, MongoDB, and Tiger are also unconfigured; camera access remains denied.
+Done (on my branch, not merged yet): One bounded synthetic-fixture request reached xAI and established the exact Grok blocker; README documents the recovery action.
+Doing now: xAI key replacement is needed before another live scene request.
+Next: In the xAI console, create or verify an active API key, replace only `XAI_API_KEY` in `.env`, then rerun the bounded fixture check.
+Blocked on: xAI rejected the loaded nonempty key with HTTP 400: `Incorrect API key provided. You can obtain an API key from https://console.x.ai.` This is authentication/key state, not a `grok-4.3-latest` access/name, reasoning, structured-output, endpoint, or image-schema failure. Ollama, ElevenLabs, MongoDB, and Tiger are also unconfigured; camera access remains denied.
 Needs Matthew: (1) In System Settings > Privacy & Security > Camera, allow Terminal (or the terminal app running Scoutbot), then confirm it is allowed; about 1 minute. (2) Add authorized `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `MONGODB_URI`, and `TIGER_DATABASE_URL` to `scoutbot-b/.env`, then tell L; about 3 minutes. (3) Open Ollama and run `ollama pull qwen2.5:3b`, then leave it running; about 5-15 minutes. (4) After camera access is granted, stand or lie partly behind an obstacle in webcam view and have a same-Wi-Fi phone ready for the laptop/phone run; about 8 minutes.
 Requests for R:
-Edits to files I don't own: `f43bd1e` updates runtime/settings/types/dashboard wiring, profiles, README, and the shared contract at the user's direction; it adds xAI scene selection without touching Gemini talk/triage.
+Edits to files I don't own: `f43bd1e` updates runtime/settings/types/dashboard wiring, profiles, README, and the shared contract at the user's direction; it adds xAI scene selection without touching Gemini talk/triage. `732b66b` adds the README recovery action for the documented invalid-key result (5 lines).
 Contract changes: `scene.provider` accepts `xai`; `services["scene"]` names the active scene lane; `PersonDetection.source` now accepts `xai`. Existing `services["gemini_scene"]` is retained for older dashboard clients.
-Numbers measured (live): xAI docs show `grok-4.3-latest` is image-capable and supports `xhigh`; fixture request could not authenticate because `XAI_API_KEY` was unavailable (no key or response data recorded). 165 tests passed in 15.90 s; 20-second sim: 1 survivor, 0 contacts, 0 watchdog trips. Gemini key discovery: 19 usable models. Flash-lite scene benchmark: 30 calls, 10/30 schema-valid, p50 0.17 s, p95 1.49 s; a 3-call retry was 3/3. Gemini talk/triage: 6/6 expected categories, triage 0.69-0.97 s, reply 0.51-0.96 s. Local voice completed 8.20 s. No Ollama/ElevenLabs/Mongo/Tiger measurements because they are unconfigured.
+Numbers measured (live): xAI's current model catalog lists `grok-4.3-latest` as an image-capable alias with structured outputs and `none|low|medium|high|xhigh` reasoning support. One 20×30 synthetic JPEG request to `https://api.x.ai/v1/chat/completions`, with `grok-4.3-latest`, `reasoning_effort=xhigh`, `response_format=json_object`, and no retries returned the sanitized HTTP 400 message above. 165 tests passed in 15.90 s; 20-second sim: 1 survivor, 0 contacts, 0 watchdog trips. Gemini key discovery: 19 usable models. Flash-lite scene benchmark: 30 calls, 10/30 schema-valid, p50 0.17 s, p95 1.49 s; a 3-call retry was 3/3. Gemini talk/triage: 6/6 expected categories, triage 0.69-0.97 s, reply 0.51-0.96 s. Local voice completed 8.20 s. No Ollama/ElevenLabs/Mongo/Tiger measurements because they are unconfigured.
 
 ## R – Robot   (phase 2; updated 14:12 EDT, branch agent/robot)
 Camera: CAMERA FREE (13:54). R1 still needs one 4-minute session with a person (below); R will ask here first before using it again.
