@@ -256,7 +256,10 @@ function render() {
   if (!s.online) $("offBanner").textContent = `No internet${s.force_offline ? " (simulated)" : ""}: replies come from Ollama, the local voice speaks, `
     + (queued.length ? `survivors queued for sync (${queued.join(", ")}).` : "survivors are saved here and sync when the internet returns.");
   $("offline").checked = s.force_offline;
-  $("camInfo").textContent = s.camera.healthy ? "" : "camera: " + (s.camera.reasons || []).join(", ");
+  const vision = s.vision || {};
+  $("camInfo").textContent = s.camera.healthy
+    ? `${vision.camera_type || "camera"} · ${vision.capture_fps ?? "?"} fps`
+    : "camera: " + (s.camera.reasons || []).join(", ");
   // status
   const sc = s.scene;
   $("status").innerHTML = [

@@ -48,6 +48,54 @@ class OpenCVCamera:
             pass
 
 
+class PiCamera2Camera:
+    """Raspberry Pi Camera Module source, loaded only on a Pi with picamera2.
+
+    Picamera2 returns RGB arrays.  Scoutbot's camera contract is BGR, matching
+    OpenCV and the dashboard JPEG encoder, so conversion happens at this edge.
+    """
+
+    def __init__(self, size=(640, 480), fps: float = 15):
+        self.index = "picamera2"
+        self.ok = False
+        self.camera = None
+        self.error = ""
+        try:
+            from picamera2 import Picamera2
+            self.camera = Picamera2()
+            width, height = (int(size[0]), int(size[1]))
+            config = self.camera.create_video_configuration(main={"size": (width, height), "format": "RGB888"})
+            self.camera.configure(config)
+            self.camera.start()
+            # Let auto-exposure settle before the first health sample.
+            time.sleep(max(0.0, min(2.0, 2.0 / max(float(fps), 1.0))))
+            self.ok = True
+        except Exception as exc:
+            self.error = f"{type(exc).__name__}: {exc}"
+            self.close()
+
+    def read(self):
+        if not self.ok or self.camera is None:
+            return None
+        try:
+            rgb = self.camera.capture_array("main")
+            return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        except Exception:
+            return None
+
+    def close(self):
+        if self.camera is not None:
+            try:
+                self.camera.stop()
+            except Exception:
+                pass
+            try:
+                self.camera.close()
+            except Exception:
+                pass
+        self.camera = None
+
+
 def open_best_camera(
     preferred: int,
     candidates: Iterable[int] = range(4),

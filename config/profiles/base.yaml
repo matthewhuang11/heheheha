@@ -2,8 +2,9 @@
 # Any value can be overridden on the command line:  python -m scoutbot --profile laptop --set hw.distance=random
 
 hw:
-  camera: opencv            # opencv | folder | synthetic
+  camera: opencv            # opencv | picamera2 | folder | synthetic
   camera_index: 0           # portable default; CAMERA_INDEX in .env overrides it
+  camera_size: [640, 480]   # requested picamera2 capture size
   camera_folder: dataset/
   camera_fps: 15
   distance: sliders         # sliders | random | scripted | replay | simworld | hcsr04 | tof

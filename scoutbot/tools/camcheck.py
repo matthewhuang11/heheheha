@@ -7,7 +7,7 @@ from pathlib import Path
 
 import cv2
 
-from scoutbot.hw.camera_opencv import open_best_camera
+from scoutbot.hw.camera_opencv import PiCamera2Camera, open_best_camera
 from scoutbot.settings import get, load
 
 
@@ -26,7 +26,15 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     cfg = load(args.profile)
-    camera = open_best_camera(get(cfg, "hw.camera_index", 0))
+    kind = get(cfg, "hw.camera", "opencv")
+    if kind == "picamera2":
+        camera = PiCamera2Camera(get(cfg, "hw.camera_size", [640, 480]), get(cfg, "hw.camera_fps", 15))
+    elif kind == "opencv":
+        camera = open_best_camera(get(cfg, "hw.camera_index", 0))
+    else:
+        raise SystemExit(f"camcheck supports hw.camera=opencv or picamera2, not {kind!r}")
+    if not camera.ok:
+        raise SystemExit(f"camera {getattr(camera, 'index', kind)} unavailable: {getattr(camera, 'error', '')}")
     output_dir = Path("data/camcheck")
     output_dir.mkdir(parents=True, exist_ok=True)
     durations: list[float] = []

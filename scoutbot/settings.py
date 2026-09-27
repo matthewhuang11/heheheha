@@ -70,7 +70,7 @@ def load(profile: str = DEFAULT_PROFILE, overrides: list[str] | None = None, loa
                              f"(or 'mac', the old name of 'laptop')")
         cfg = merge(cfg, _read_yaml(p))
     cam = os.getenv("CAMERA_INDEX", "").strip()
-    if cam and profile != "pi":
+    if cam:
         try: cfg["hw"]["camera_index"] = int(cam)
         except ValueError: print(f"[settings] CAMERA_INDEX in .env is not a number ('{cam}'): ignored", flush=True)
     for item in overrides or []:

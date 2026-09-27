@@ -12,6 +12,7 @@ class Shared:
         # camera
         self.frame = None; self.jpeg = None; self.frame_at = None; self.frame_seq = 0
         self.cam_health = {"healthy": False, "reasons": ["no frame yet"]}
+        self.capture_fps = 0.0
         # distance sensors (raw, from the driver)
         self.raw_sensors = Sensors(updated_at=0)
         self.slider_values = [200.0, 200.0, 200.0]; self.slider_valid = [True, True, True]

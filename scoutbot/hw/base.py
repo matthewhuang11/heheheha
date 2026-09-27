@@ -54,6 +54,12 @@ def build(cfg: dict, shared, world=None):
         if not camera.ok and world is not None:           # no webcam: fall back to a synthetic view in the sim
             from scoutbot.hw.camera_opencv import SyntheticCamera
             camera = SyntheticCamera(world)
+    elif cam_kind == "picamera2":
+        from scoutbot.hw.camera_opencv import PiCamera2Camera
+        size = hw.get("camera_size", [640, 480])
+        camera = PiCamera2Camera(size=size, fps=hw.get("camera_fps", 15))
+        if not camera.ok:
+            print(f"[camera] picamera2 unavailable: {camera.error}", flush=True)
     elif cam_kind == "folder":
         from scoutbot.hw.camera_opencv import FolderCamera
         camera = FolderCamera(hw["camera_folder"], hw.get("camera_fps", 10))

@@ -29,6 +29,7 @@ def test_bad_camera_index_is_ignored(monkeypatch):
     assert isinstance(cfg["hw"]["camera_index"], int)
     monkeypatch.setenv("CAMERA_INDEX", "2")
     assert settings.load("laptop", load_env=False)["hw"]["camera_index"] == 2
+    assert settings.load("pi", load_env=False)["hw"]["camera_index"] == 2
 
 def test_share_sets_host(monkeypatch):
     from scoutbot import __main__ as m

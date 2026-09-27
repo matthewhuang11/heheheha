@@ -2,6 +2,7 @@
 and every action goes through the safety gate. The existing brain (robot/controller.py) is called unchanged."""
 from __future__ import annotations
 import json, math, threading, time
+from collections import deque
 from pathlib import Path
 import cv2
 from robot.brain import Context, camera_note
@@ -94,7 +95,7 @@ class Runtime:
 
     def camera_loop(self):
         """Runs on the MAIN thread (macOS prefers camera capture there)."""
-        misses = 0
+        misses = 0; capture_times = deque(maxlen=30)
         while not self._stop.is_set():
             f = self.camera.read()
             if f is None:
@@ -103,10 +104,11 @@ class Runtime:
                 with self.shared.lock: self.shared.cam_health = {"healthy": False, "reasons": ["no frames from camera"]}
                 time.sleep(0.05); continue
             misses = 0; small = _shrink(f); ok, enc = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 80])
-            now = time.monotonic(); h = self.health.update(small, now)
+            now = time.monotonic(); h = self.health.update(small, now); capture_times.append(now)
+            fps = (len(capture_times) - 1) / max(capture_times[-1] - capture_times[0], 1e-6) if len(capture_times) > 1 else 0.0
             with self.shared.lock:
                 self.shared.frame = small; self.shared.jpeg = enc.tobytes() if ok else self.shared.jpeg
-                self.shared.frame_at = now; self.shared.frame_seq += 1; self.shared.cam_health = h
+                self.shared.frame_at = now; self.shared.frame_seq += 1; self.shared.cam_health = h; self.shared.capture_fps = round(fps, 1)
 
     def distance_loop(self):
         while not self._stop.is_set():
@@ -383,6 +385,13 @@ class Runtime:
                 "internet": sh.internet, "force_offline": sh.force_offline, "online": sh.internet and not sh.force_offline,
                 "services": dict(sh.services), "sync": {k: dict(v) for k, v in sh.sync_status.items()},
                 "camera": sh.cam_health,
+                "vision": {
+                    "camera_type": self.cfg["hw"]["camera"],
+                    "camera_index": getattr(self.camera, "index", None),
+                    "capture_fps": sh.capture_fps,
+                    "last_frame_age": round(now - sh.frame_at, 2) if sh.frame_at else None,
+                    "stream_fps_target": 15,
+                },
                 "deadman": {"motor_age": round(now - sh.last_motor_apply, 2) if sh.last_motor_apply else None, "trips": sh.watchdog_trips,
                             "link_age": round(now - sh.link_at, 2) if sh.link_at else None,
                             "link_timeout": self.cfg["safety"]["link_timeout_manual_s"] if sh.mode == Mode.MANUAL else self.cfg["safety"]["link_timeout_auto_s"]},
