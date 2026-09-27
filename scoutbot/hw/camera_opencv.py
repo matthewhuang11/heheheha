@@ -53,13 +53,17 @@ class PiCamera2Camera:
 
     Picamera2 returns RGB arrays.  Scoutbot's camera contract is BGR, matching
     OpenCV and the dashboard JPEG encoder, so conversion happens at this edge.
+    Camera Module 3 (IMX708) has an autofocus lens, so continuous autofocus is
+    enabled when libcamera exposes that control. Older fixed-focus modules still
+    work without it.
     """
 
-    def __init__(self, size=(640, 480), fps: float = 15):
+    def __init__(self, size=(640, 480), fps: float = 15, autofocus: bool = True):
         self.index = "picamera2"
         self.ok = False
         self.camera = None
         self.error = ""
+        self.autofocus = "not requested" if not autofocus else "unavailable"
         try:
             from picamera2 import Picamera2
             self.camera = Picamera2()
@@ -67,6 +71,14 @@ class PiCamera2Camera:
             config = self.camera.create_video_configuration(main={"size": (width, height), "format": "RGB888"})
             self.camera.configure(config)
             self.camera.start()
+            if autofocus:
+                try:
+                    from libcamera import controls
+                    self.camera.set_controls({"AfMode": controls.AfModeEnum.Continuous})
+                    self.autofocus = "continuous"
+                except Exception:
+                    # Fixed-focus modules and older libcamera versions do not expose AfMode.
+                    self.autofocus = "unavailable"
             # Let auto-exposure settle before the first health sample.
             time.sleep(max(0.0, min(2.0, 2.0 / max(float(fps), 1.0))))
             self.ok = True

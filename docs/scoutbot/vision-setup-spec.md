@@ -49,7 +49,7 @@ Key facts from the code that this spec depends on:
 - An unhealthy camera is treated like a missing camera: sensors only, speed capped at slow. So a bad picture costs speed, not safety.
 - "Where" is just thirds of the image width: left under 1/3, right over 2/3. "Near / mid / far" comes from box height as a fraction of image height (`near_frac` 0.5, `mid_frac` 0.2).
 - The survivor position guess assumes a side bearing of 25 degrees for left/right and fixed distances: near 70 cm, mid 200 cm, far 400 cm (`survivors.bearing_deg`, `survivors.dist_cm`). These are guesses until measured on the real camera.
-- The camera is a GoPro (confirmed by Matthew, 2026-09-27; exact model still to record). A GoPro configured in **USB webcam/UVC mode** appears as an ordinary video device and uses `hw.camera: opencv`. A GoPro using its network stream still needs its model-specific URL/source configuration. The new `hw.camera: picamera2` source is for a ribbon-cable Pi Camera Module, not a GoPro.
+- The robot camera is a **Raspberry Pi Camera Module 3 (IMX708)** on the CSI ribbon connector. The Pi profile uses `hw.camera: picamera2`, a 640×360/15 FPS video stream, BGR conversion for the rest of Scoutbot, and continuous autofocus when libcamera exposes it. It is not a GoPro or an OpenCV `/dev/video*` source.
 
 ## 3. Setup steps and checks
 
@@ -67,8 +67,8 @@ Pass when it prints an index, a resolution, FPS, `black=no`, and saves 20 sample
 
 Things to check:
 
-- Which type of camera it is. A USB webcam appears as `/dev/video0` and works with the current code. A ribbon-cable Pi Camera Module on current Raspberry Pi OS usually does not open through plain OpenCV `VideoCapture(0)`; it needs `picamera2` (or a compatibility layer). If `camcheck` finds nothing and a ribbon camera is installed, that is why. Fix: add a `hw.camera: picamera2` source (section 6, item V1).
-- Set `CAMERA_INDEX` in `.env` once you know the right one so the search does not run each start. (Note: `settings.load` ignores `CAMERA_INDEX` for the `pi` profile; use `hw.camera_index` in `config/profiles/pi.yaml` instead.)
+- The Camera Module 3 is a ribbon-cable Pi camera and must use `picamera2`, which `scripts/pi_setup.sh` installs as the Raspberry Pi OS `python3-picamera2` package. The script creates or upgrades the virtual environment with system packages enabled so it can import the matching libcamera build. Do not switch the Pi profile to `opencv` or `CAMERA_INDEX` for this camera.
+- Camera Module 3 autofocus: point at a near object then a distant object and confirm the picture settles sharp within a few seconds. `PiCamera2Camera` requests continuous autofocus; record any module or libcamera build that does not expose autofocus.
 - Permissions on the Pi: the user must be in the `video` group (`groups` shows it).
 
 ### 3.2 Picture quality
@@ -181,7 +181,7 @@ Each of these should be tested on purpose, with the wheels off the ground first:
 
 ## 5. Acceptance checklist (sign off before the demo)
 
-- [ ] Camera model, height, tilt, FOV, resolution recorded in `robot.md`
+- [ ] Camera Module 3 autofocus works near-to-far, or its unavailable state is recorded
 - [ ] `camcheck`: not black, at least 10 fps
 - [ ] Picture quality table passed in demo lighting
 - [ ] Dashboard video: at least 10 fps, delay under 500 ms (LAN)
@@ -197,7 +197,7 @@ Each of these should be tested on purpose, with the wheels off the ground first:
 
 | # | Change | Status |
 | --- | --- | --- |
-| V1 | `hw.camera: picamera2` for a ribbon Pi Camera Module, BGR conversion, lazy import | Implemented. Set `hw.camera: picamera2` only when the physical camera is a Pi Camera Module and `picamera2` is installed. GoPro USB webcam mode remains `opencv`. |
+| V1 | `hw.camera: picamera2` for Camera Module 3 (IMX708), 640×360/15 FPS, BGR conversion, lazy import, continuous autofocus when available | Configured as the Pi default. `scripts/pi_setup.sh` installs Raspberry Pi OS `python3-picamera2` and exposes it inside the project virtual environment. |
 | V2 | `python -m scoutbot.tools.vision_check --profile pi` | Implemented. Measures health, brightness, contrast, sharpness, capture FPS, saves two samples, and runs the configured on-device YOLO benchmark. Glass-to-glass delay remains a required manual stopwatch check. |
 | V3 | `yolo_bench --log-boxes` and distance calibration | Already implemented. `scoutbot.tools.distance_tune` captures the distance-test set; `yolo_bench --log-boxes` prints normalized box heights. |
 | V4 | Camera metrics in `Runtime.state()` | Implemented as `vision.camera_type`, `camera_index`, `capture_fps`, `last_frame_age`, and `stream_fps_target`; the dashboard displays source and capture FPS. |
@@ -206,7 +206,7 @@ Each of these should be tested on purpose, with the wheels off the ground first:
 
 ## 7. Open questions
 
-1. What camera is on the robot: GoPro (which model, and does it appear as a webcam?), USB webcam, or Pi Camera Module? This decides V1.
+1. Confirm the Camera Module 3 ribbon is fully seated, lens is unobstructed, and `rpicam-hello --list-cameras` identifies the IMX708 before the first `camcheck`.
 2. Is the Pi 4 fast enough for YOLO on-board, or will the laptop run it? (Answered by the 3.5 benchmark.)
 3. What is the demo room like (floor, lighting, distances)? Sets the thresholds.
 4. Is a wide-angle lens in use? It changes the "thirds" assumption and the position guesses.

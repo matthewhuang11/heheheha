@@ -1,7 +1,12 @@
 # The real robot (Raspberry Pi 4).
 hw:
-  camera: opencv
-  camera_index: 0
+  # Raspberry Pi Camera Module 3 (IMX708) on the CSI ribbon connector.
+  # This is intentionally not an OpenCV/GoPro camera source.
+  camera: picamera2
+  camera_model: imx708
+  camera_size: [640, 360]
+  camera_fps: 15
+  camera_autofocus: true
   distance: hcsr04          # or tof, if the hardware team uses VL53L0X/VL53L1X over I2C
   motors: l298n
 scene:

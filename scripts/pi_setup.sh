@@ -8,7 +8,7 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 essential_packages=(
-  python3-venv python3-dev espeak-ng mpg123 libgl1 libglib2.0-0 i2c-tools git
+  python3-venv python3-dev python3-picamera2 espeak-ng mpg123 libgl1 libglib2.0-0 i2c-tools git
 )
 optional_packages=(libatlas-base-dev libopenblas-dev)
 
@@ -30,7 +30,13 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 cd "$ROOT"
-[ -d .venv ] || python3 -m venv .venv
+# picamera2 is supplied by Raspberry Pi OS because it must match libcamera.
+# Include system packages so the venv can use that supported installation.
+if [ ! -d .venv ]; then
+  python3 -m venv --system-site-packages .venv
+elif ! .venv/bin/python -c 'import picamera2' >/dev/null 2>&1; then
+  python3 -m venv --upgrade --system-site-packages .venv
+fi
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements-pi.txt

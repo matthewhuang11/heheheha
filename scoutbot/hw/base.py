@@ -57,7 +57,7 @@ def build(cfg: dict, shared, world=None):
     elif cam_kind == "picamera2":
         from scoutbot.hw.camera_opencv import PiCamera2Camera
         size = hw.get("camera_size", [640, 480])
-        camera = PiCamera2Camera(size=size, fps=hw.get("camera_fps", 15))
+        camera = PiCamera2Camera(size=size, fps=hw.get("camera_fps", 15), autofocus=hw.get("camera_autofocus", True))
         if not camera.ok:
             print(f"[camera] picamera2 unavailable: {camera.error}", flush=True)
     elif cam_kind == "folder":

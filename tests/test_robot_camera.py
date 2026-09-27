@@ -75,3 +75,26 @@ def test_picamera2_source_converts_rgb_to_bgr(monkeypatch):
     camera = camera_opencv.PiCamera2Camera((320, 240), 15)
     assert camera.ok and camera.read()[0, 0].tolist() == [0, 0, 255]
     camera.close()
+
+
+def test_picamera2_module3_requests_continuous_autofocus(monkeypatch):
+    class FakePiCamera:
+        def create_video_configuration(self, **kw): return kw
+        def configure(self, config): pass
+        def start(self): pass
+        def stop(self): pass
+        def close(self): pass
+        def set_controls(self, controls): self.controls = controls
+
+    import sys, types
+    fake = FakePiCamera()
+    monkeypatch.setitem(sys.modules, "picamera2", types.SimpleNamespace(Picamera2=lambda: fake))
+    monkeypatch.setitem(sys.modules, "libcamera", types.SimpleNamespace(
+        controls=types.SimpleNamespace(AfModeEnum=types.SimpleNamespace(Continuous="continuous"))))
+    monkeypatch.setattr(camera_opencv.time, "sleep", lambda _: None)
+
+    camera = camera_opencv.PiCamera2Camera((640, 360), 15)
+
+    assert camera.ok and camera.autofocus == "continuous"
+    assert fake.controls == {"AfMode": "continuous"}
+    camera.close()
