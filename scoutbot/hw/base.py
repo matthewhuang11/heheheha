@@ -16,6 +16,7 @@ class DistanceSensors(Protocol):
 
 class Motors(Protocol):
     def apply(self, action: Action) -> None: ...  # called >= 10 Hz by the control loop; each call feeds the dead-man
+    def apply_wheels(self, left: float, right: float) -> None: ...
     def stop(self) -> None: ...                   # immediate, idempotent, safe from any thread
     def current(self) -> tuple[float, float]: ... # wheel fractions actually being output now (after ramp)
     def close(self) -> None: ...

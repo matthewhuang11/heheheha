@@ -21,8 +21,15 @@ class L298NMotors:
         else: m.stop()
     def apply(self, action: Action) -> None:
         l, r = wheel_speeds(action, self.cfg)
+        self.apply_wheels(l, r)
+    def apply_wheels(self, left: float, right: float) -> None:
         with self.lock:
-            ol, orr = self.ramp.set(l, r, time.monotonic())
+            ol, orr = self.ramp.set(max(-1.0, min(1.0, left)), max(-1.0, min(1.0, right)), time.monotonic())
+            manual = self.cfg.get("manual", {})
+            if ol: ol = (1 if ol > 0 else -1) * max(abs(ol), float(manual.get("min_start", 0.0)))
+            if orr: orr = (1 if orr > 0 else -1) * max(abs(orr), float(manual.get("min_start", 0.0)))
+            if manual.get("invert_left", False): ol = -ol
+            if manual.get("invert_right", False): orr = -orr
             self._out(self.left, ol); self._out(self.right, orr)
     def stop(self) -> None:
         with self.lock:

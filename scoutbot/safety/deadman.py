@@ -13,6 +13,12 @@ def manual_action(cmd: DriveCommand | None, now: float, valid_s: float) -> Actio
     if cmd is None or now - cmd.received_at > valid_s: return Action.STOP
     return cmd.action
 
+def manual_axes(cmd: DriveCommand | None, now: float, valid_s: float) -> tuple[float, float]:
+    """Return a fresh analog command, or neutral when it is absent or stale."""
+    if cmd is None or cmd.v is None or cmd.w is None or now - cmd.received_at > valid_s:
+        return 0.0, 0.0
+    return cmd.v, cmd.w
+
 def link_check(mode: Mode, link_at: float | None, now: float, safety_cfg: dict) -> str | None:
     """Returns a reason string if the link is lost for this mode, else None."""
     if mode == Mode.STOPPED or not safety_cfg.get("link_required", True): return None

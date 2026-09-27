@@ -47,3 +47,35 @@ class Gate:
 
     def _done(self, action, veto):
         self.backup_since = None; return GateResult(action, veto)
+
+    def check_analog(self, v: float, w: float, mode: Mode, L, C, R, sensors_fresh: bool, now: float,
+                     max_reverse: float = 0.35) -> tuple[float, float, str | None]:
+        """Continuously apply the same obstacle and reverse rules as `check`."""
+        if mode != Mode.MANUAL:
+            self.backup_since = None; return 0.0, 0.0, "mode is not MANUAL"
+        if not sensors_fresh or (L is None and C is None and R is None):
+            self.backup_since = None; return 0.0, 0.0, "sensor data stale or all sensors have no echo"
+        vetoes = []
+        if v > 0:
+            if C is not None and C < self.P.stop_cm:
+                v = 0.0; vetoes.append(f"blocked: something {_cm(C)} ahead")
+            elif C is None or C < self.P.slow_cm:
+                # Unknown center data is permitted only at the slow edge, as in
+                # the legacy gate.  A known reading scales linearly to zero.
+                scale = 0.0 if C is None else max(0.0, min(1.0, (C - self.P.stop_cm) / (self.P.slow_cm - self.P.stop_cm)))
+                v *= scale; vetoes.append(f"capped at slow: center {_cm(C)}")
+        if w < 0 and L is not None and L < self.P.side_near:
+            w = 0.0; vetoes.append(f"blocked: left side {_cm(L)}")
+        if w > 0 and R is not None and R < self.P.side_near:
+            w = 0.0; vetoes.append(f"blocked: right side {_cm(R)}")
+        if v < 0:
+            v = max(v, -abs(max_reverse))
+            if now < self.rest_until:
+                return 0.0, 0.0, "backing up paused (no rear sensor)"
+            if self.backup_since is None: self.backup_since = now
+            if now - self.backup_since > self.backup_max_s:
+                self.backup_since = None; self.rest_until = now + self.backup_rest_s
+                return 0.0, 0.0, f"backed up {self.backup_max_s:.1f}s: pausing (no rear sensor)"
+        else:
+            self.backup_since = None
+        return v, w, "; ".join(vetoes) or None

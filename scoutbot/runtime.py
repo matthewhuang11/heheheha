@@ -1,7 +1,7 @@
 """Starts every worker and runs the control loop (spec 3.3). The control loop is the ONLY thing that drives the motors,
 and every action goes through the safety gate. The existing brain (robot/controller.py) is called unchanged."""
 from __future__ import annotations
-import json, threading, time
+import json, math, threading, time
 from pathlib import Path
 import cv2
 from robot.brain import Context, camera_note
@@ -12,14 +12,15 @@ from robot.types import Action, SceneReport, Sensors
 from scoutbot.hw.base import build as build_hw
 from scoutbot.perception.fusion import Fuser, fresh_person
 from scoutbot.perception.yolo import PerceptionWorker
-from scoutbot.safety.deadman import MotorWatchdog, link_check, manual_action
-from scoutbot.safety.gate import Gate
+from scoutbot.safety.deadman import MotorWatchdog, link_check, manual_action, manual_axes
+from scoutbot.safety.gate import Gate, GateResult
 from scoutbot.safety.modes import ModeController
 from scoutbot.state import Bus, Shared
 from scoutbot.survivors.mapping import MapBuilder
 from scoutbot.survivors.pose import DeadReckoning
 from scoutbot.survivors.registry import Registry
 from scoutbot.types import DriveCommand, Mode, PersonDetection, utc_now
+from scoutbot.control.mix import mix
 
 def _shrink(frame, width=640):
     h, w = frame.shape[:2]
@@ -163,10 +164,29 @@ class Runtime:
         L, C, R = dec.filtered.values()
         cam_usable = camera_note(raw, fused, now, scene_at, Context(DEFAULT, cam_ok)) == ""
         yolo_hold = person is not None and person.distance == "near" and not cam_usable and not self.fuser.is_suppressed(person_position)
-        res = self.gate.check(want, mode, L, C, R, raw.fresh(now, DEFAULT.sensor_stale_s), now, yolo_hold)
+        analog = mode == Mode.MANUAL and cmd is not None and cmd.v is not None and cmd.w is not None
+        if analog:
+            v, w = manual_axes(cmd, now, cfg["safety"].get("manual_cmd_valid_s", 0.3))
+            if not sh.manual_neutral_seen:
+                v, w, analog_veto = 0.0, 0.0, "send neutral controls before driving"
+            else:
+                v, w, analog_veto = self.gate.check_analog(
+                    v, w, mode, L, C, R, raw.fresh(now, DEFAULT.sensor_stale_s), now,
+                    cfg.get("manual", {}).get("max_reverse", 0.35),
+                )
+            wheels = mix(v, w, cfg.get("manual", {}), cmd.slow)
+            self.motors.apply_wheels(*wheels); self.watchdog.fed()
+            # Preserve the legacy result shape for callers while making analog
+            # operation visible to clients that do not yet render manual state.
+            res = GateResult(Action.STOP, analog_veto)
+            final_action = "WHEELS"
+        else:
+            res = self.gate.check(want, mode, L, C, R, raw.fresh(now, DEFAULT.sensor_stale_s), now, yolo_hold)
+            self.motors.apply(res.action); self.watchdog.fed()
+            wheels = self.motors.current()
+            final_action = res.action.value
         if mode == Mode.AUTO and res.veto and "blocked" in res.veto:
             print(f"[gate] vetoed AUTO {want.value}: {res.veto} (the brain should not have chosen this)", flush=True)
-        self.motors.apply(res.action); self.watchdog.fed()
         wheels = self.motors.current(); pose = self.pose.update(wheels, now)
         true = self.world.pose() if self.world else None
         self.map.update(pose, (L, C, R), true)
@@ -174,7 +194,8 @@ class Runtime:
             sh.decision = {"action": dec.action.value, "rule": dec.rule, "reason": dec.reason, "notes": dec.notes, "stuck": dec.stuck,
                            "trace": [{"rule": s.rule, "name": s.name, "matched": s.matched, "applicable": s.applicable, "evidence": s.evidence,
                                       "fired": i == dec.fired} for i, s in enumerate(dec.steps)]}
-            sh.final_action = res.action.value; sh.veto = res.veto; sh.filtered = [L, C, R]; sh.pose = pose; sh.true_pose = true
+            sh.final_action = final_action; sh.veto = res.veto; sh.filtered = [L, C, R]; sh.pose = pose; sh.true_pose = true
+            sh.manual_wheels = wheels; sh.manual_veto = res.veto
             sh.last_motor_apply = now; sh.watchdog_trips = self.watchdog.trips
             if self.world: sh.sim_contacts = self.world.contacts
         wall = time.time()
@@ -182,13 +203,13 @@ class Runtime:
             self._last_log = wall
             rec = {"time": wall, "mode": mode.value, "raw": [raw.left, raw.center, raw.right], "valid": list(raw.valid), "filtered": [L, C, R],
                    "scene_age": (now - scene_at) if scene_at else None, "person": person.model_dump() if person else None,
-                   "brain": {"action": dec.action.value, "rule": dec.rule}, "final": res.action.value, "veto": res.veto,
+                   "brain": {"action": dec.action.value, "rule": dec.rule}, "final": final_action, "veto": res.veto,
                    "pose": pose.model_dump(), "online": online}
             with open(self.log_file, "a", encoding="utf-8") as f: f.write(json.dumps(rec) + "\n")
         hz = cfg["sync"].get("telemetry_hz", 1)
         if hz and wall - self._last_tel >= 1.0 / hz and self.outbox.sinks:
             self._last_tel = wall
-            self.outbox.add_rows("telemetry", [{"time": utc_now(), "mode": mode.value, "action": res.action.value, "rule": dec.rule,
+            self.outbox.add_rows("telemetry", [{"time": utc_now(), "mode": mode.value, "action": final_action, "rule": dec.rule,
                                                 "left_cm": L, "center_cm": C, "right_cm": R, "internet": online,
                                                 "x_cm": pose.x_cm, "y_cm": pose.y_cm}])
         return res
@@ -284,7 +305,22 @@ class Runtime:
             return {"ok": True}
         if t == "drive":
             if self.modes.mode != Mode.MANUAL: return {"ok": False, "error": "take control first (MANUAL mode)"}
-            with sh.lock: sh.drive_cmd = DriveCommand(action=Action(msg["action"]), seq=int(msg.get("seq", 0)), received_at=now)
+            analog = "v" in msg or "w" in msg
+            if analog:
+                if "v" not in msg or "w" not in msg: return {"ok": False, "error": "drive needs both v and w"}
+                try: v, w = float(msg["v"]), float(msg["w"]); seq = int(msg.get("seq", 0))
+                except (TypeError, ValueError): return {"ok": False, "error": "v, w, and seq must be numbers"}
+                if not math.isfinite(v) or not math.isfinite(w): return {"ok": False, "error": "v and w must be finite"}
+                with sh.lock:
+                    if seq < sh.manual_last_seq: return {"ok": True, "ignored": "out-of-order sequence"}
+                    sh.manual_last_seq = seq
+                    deadzone = float(self.cfg.get("manual", {}).get("deadzone", 0.08))
+                    if abs(v) <= deadzone and abs(w) <= deadzone: sh.manual_neutral_seen = True
+                    sh.drive_cmd = DriveCommand(v=max(-1.0, min(1.0, v)), w=max(-1.0, min(1.0, w)), slow=bool(msg.get("slow", False)), seq=seq, received_at=now)
+            else:
+                try: action = Action(msg["action"])
+                except (KeyError, ValueError): return {"ok": False, "error": "unknown drive action"}
+                with sh.lock: sh.drive_cmd = DriveCommand(action=action, seq=int(msg.get("seq", 0)), received_at=now)
             return None
         if t == "chat":
             sid = msg["survivor_id"]; text = str(msg.get("text", "")).strip()[:500]
@@ -341,6 +377,14 @@ class Runtime:
                             "link_age": round(now - sh.link_at, 2) if sh.link_at else None,
                             "link_timeout": self.cfg["safety"]["link_timeout_manual_s"] if sh.mode == Mode.MANUAL else self.cfg["safety"]["link_timeout_auto_s"]},
                 "sliders": {"values": list(sh.slider_values), "valid": list(sh.slider_valid)},
+                "manual": {
+                    "armed": not self.cfg.get("manual", {}).get("require_arm", False),
+                    "neutral_seen": sh.manual_neutral_seen,
+                    "cmd": None if sh.drive_cmd is None or sh.drive_cmd.v is None else {
+                        "v": sh.drive_cmd.v, "w": sh.drive_cmd.w, "age": round(now - sh.drive_cmd.received_at, 2),
+                    },
+                    "wheels": list(sh.manual_wheels), "veto": sh.manual_veto,
+                },
             }
         st["survivors"] = self.survivor_rows()
         return st

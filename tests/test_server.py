@@ -28,6 +28,20 @@ def test_ws_modes_drive_and_estop(tmp_path, monkeypatch):
             m = ws.receive_json()
             if m["type"] == "state" and m["mode"] == "MANUAL": break
         assert rt.shared.drive_cmd is not None and rt.shared.drive_cmd.action.value == "FORWARD"
+        ws.send_json({"type": "drive", "v": 0.0, "w": 0.0, "seq": 2})
+        ws.send_json({"type": "drive", "v": 0.7, "w": -0.2, "seq": 3})
+        for _ in range(20):
+            m = ws.receive_json()
+            if m["type"] == "state" and m.get("manual", {}).get("cmd", {}).get("v") == 0.7: break
+        assert rt.shared.manual_neutral_seen and rt.shared.drive_cmd.v == 0.7
+        ws.send_json({"type": "drive", "v": float("nan"), "w": 0, "seq": 4})
+        m = ws.receive_json()
+        while m["type"] != "reply": m = ws.receive_json()
+        assert m["ok"] is False and "finite" in m["error"]
+        ws.send_json({"type": "drive", "v": 0.1, "w": 0.0, "seq": 2})
+        m = ws.receive_json()
+        while m["type"] != "reply": m = ws.receive_json()
+        assert m["ok"] and m["ignored"] == "out-of-order sequence"
         ws.send_json({"type": "estop"})
         for _ in range(20):
             m = ws.receive_json()

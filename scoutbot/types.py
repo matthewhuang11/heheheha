@@ -13,7 +13,12 @@ class Mode(str, Enum):
     STOPPED = "STOPPED"; AUTO = "AUTO"; MANUAL = "MANUAL"
 
 class DriveCommand(BaseModel):
-    action: Action
+    # `action` preserves the original five-button protocol.  Analog clients
+    # supply v/w instead, so neither is required by the wire format.
+    action: Action = Action.STOP
+    v: float | None = None
+    w: float | None = None
+    slow: bool = False
     seq: int = 0
     received_at: float = 0.0          # robot monotonic time
 

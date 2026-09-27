@@ -22,6 +22,8 @@ class Shared:
         # modes / commands
         self.mode = Mode.STOPPED; self.mode_reason = "boot: press Start"
         self.drive_cmd = None
+        self.manual_neutral_seen = False; self.manual_last_seq = -1
+        self.manual_wheels = (0.0, 0.0); self.manual_veto = None
         self.link_at = None
         # decision
         self.decision = {"action": "STOP", "rule": 0, "reason": "starting", "notes": []}

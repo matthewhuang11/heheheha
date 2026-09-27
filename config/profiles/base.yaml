@@ -31,6 +31,23 @@ motion:                     # measured once on the real floor (spec 5.3)
   trim_left: 1.0
   trim_right: 1.0
 
+# Responder-operated skid-steer controls.  These are conservative PWM
+# fractions, not measured metres per second.  Tune only after bench tests.
+manual:
+  max_forward: 0.60
+  slow_factor: 0.58
+  max_reverse: 0.35
+  max_turn_in_place: 0.45
+  deadzone: 0.08
+  expo: 0.30
+  trim_left: 1.0
+  trim_right: 1.0
+  invert_left: false
+  invert_right: false
+  min_start: 0.15
+  require_arm: false         # true on a verified physical Pi installation
+  arm_pin: null
+
 speeds:                     # [left, right] as fractions of full PWM
   STOP: [0, 0]
   FORWARD: [0.6, 0.6]

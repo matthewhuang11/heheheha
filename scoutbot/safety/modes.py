@@ -15,7 +15,10 @@ class ModeController:
         mode = Mode(mode)
         with self.shared.lock:
             old = self.shared.mode; self.shared.mode = mode; self.shared.mode_reason = reason
-            if mode != Mode.MANUAL: self.shared.drive_cmd = None
+            if mode == Mode.MANUAL and old != Mode.MANUAL:
+                self.shared.drive_cmd = None; self.shared.manual_neutral_seen = False; self.shared.manual_last_seq = -1
+            elif mode != Mode.MANUAL:
+                self.shared.drive_cmd = None; self.shared.manual_neutral_seen = False
         if old != mode:
             print(f"[mode] {old.value} -> {mode.value} ({reason})", flush=True)
             if self.bus: self.bus.publish("mode", {"mode": mode.value, "reason": reason})
