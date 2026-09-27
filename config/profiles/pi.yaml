@@ -22,3 +22,7 @@ server:
   host: 0.0.0.0
   test_controls: false
   open_browser: false
+manual:
+  # Fail closed until the hardware team assigns the arm-toggle BCM pin.
+  require_arm: true
+  arm_pin: null

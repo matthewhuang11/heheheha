@@ -47,6 +47,7 @@ manual:
   min_start: 0.15
   require_arm: false         # true on a verified physical Pi installation
   arm_pin: null
+  arm_pull_up: false
 
 speeds:                     # [left, right] as fractions of full PWM
   STOP: [0, 0]

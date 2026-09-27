@@ -21,6 +21,7 @@ from scoutbot.survivors.pose import DeadReckoning
 from scoutbot.survivors.registry import Registry
 from scoutbot.types import DriveCommand, Mode, PersonDetection, utc_now
 from scoutbot.control.mix import mix
+from scoutbot.hw.manual_arm import ManualArm
 
 def _shrink(frame, width=640):
     h, w = frame.shape[:2]
@@ -39,6 +40,7 @@ class Runtime:
             from scoutbot.hw.simworld import World
             self.world = World(cfg)
         self.camera, self.distance, self.motors = build_hw(cfg, self.shared, self.world)
+        self.manual_arm = ManualArm(cfg)
         self.controller = Controller(DEFAULT); self.gate = Gate(DEFAULT, cfg["safety"].get("backup_max_s", 1.5))
         self.fuser = Fuser(); self.modes = ModeController(self.shared, self.bus); self.health = CameraHealth()
         self.watchdog = MotorWatchdog(self.motors, cfg["safety"].get("motor_watchdog_s", 0.5))
@@ -86,7 +88,7 @@ class Runtime:
                 if w: w.stop()
             except Exception: pass
         self.registry.flush()
-        for h in (self.camera, self.distance, self.motors):
+        for h in (self.camera, self.distance, self.motors, self.manual_arm):
             try: h.close()
             except Exception: pass
 
@@ -161,13 +163,18 @@ class Runtime:
         if mode == Mode.AUTO: want = dec.action
         elif mode == Mode.MANUAL: want = manual_action(cmd, now, cfg["safety"].get("manual_cmd_valid_s", 0.3))
         else: want = Action.STOP
+        arm_blocked = mode == Mode.MANUAL and not self.manual_arm.armed()
+        if arm_blocked:
+            want = Action.STOP
         L, C, R = dec.filtered.values()
         cam_usable = camera_note(raw, fused, now, scene_at, Context(DEFAULT, cam_ok)) == ""
         yolo_hold = person is not None and person.distance == "near" and not cam_usable and not self.fuser.is_suppressed(person_position)
         analog = mode == Mode.MANUAL and cmd is not None and cmd.v is not None and cmd.w is not None
         if analog:
             v, w = manual_axes(cmd, now, cfg["safety"].get("manual_cmd_valid_s", 0.3))
-            if not sh.manual_neutral_seen:
+            if not self.manual_arm.armed():
+                v, w, analog_veto = 0.0, 0.0, self.manual_arm.reason
+            elif not sh.manual_neutral_seen:
                 v, w, analog_veto = 0.0, 0.0, "send neutral controls before driving"
             else:
                 v, w, analog_veto = self.gate.check_analog(
@@ -182,6 +189,8 @@ class Runtime:
             final_action = "WHEELS"
         else:
             res = self.gate.check(want, mode, L, C, R, raw.fresh(now, DEFAULT.sensor_stale_s), now, yolo_hold)
+            if arm_blocked:
+                res.veto = self.manual_arm.reason
             self.motors.apply(res.action); self.watchdog.fed()
             wheels = self.motors.current()
             final_action = res.action.value
@@ -378,7 +387,7 @@ class Runtime:
                             "link_timeout": self.cfg["safety"]["link_timeout_manual_s"] if sh.mode == Mode.MANUAL else self.cfg["safety"]["link_timeout_auto_s"]},
                 "sliders": {"values": list(sh.slider_values), "valid": list(sh.slider_valid)},
                 "manual": {
-                    "armed": not self.cfg.get("manual", {}).get("require_arm", False),
+                    "armed": self.manual_arm.armed(), "arm_reason": self.manual_arm.reason,
                     "neutral_seen": sh.manual_neutral_seen,
                     "cmd": None if sh.drive_cmd is None or sh.drive_cmd.v is None else {
                         "v": sh.drive_cmd.v, "w": sh.drive_cmd.w, "age": round(now - sh.drive_cmd.received_at, 2),
