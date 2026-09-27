@@ -49,7 +49,7 @@ class Gate:
         self.backup_since = None; return GateResult(action, veto)
 
     def check_analog(self, v: float, w: float, mode: Mode, L, C, R, sensors_fresh: bool, now: float,
-                     max_reverse: float = 0.35) -> tuple[float, float, str | None]:
+                     max_reverse: float = 0.35, unknown_forward_scale: float = 0.58) -> tuple[float, float, str | None]:
         """Continuously apply the same obstacle and reverse rules as `check`."""
         if mode != Mode.MANUAL:
             self.backup_since = None; return 0.0, 0.0, "mode is not MANUAL"
@@ -60,9 +60,10 @@ class Gate:
             if C is not None and C < self.P.stop_cm:
                 v = 0.0; vetoes.append(f"blocked: something {_cm(C)} ahead")
             elif C is None or C < self.P.slow_cm:
-                # Unknown center data is permitted only at the slow edge, as in
-                # the legacy gate.  A known reading scales linearly to zero.
-                scale = 0.0 if C is None else max(0.0, min(1.0, (C - self.P.stop_cm) / (self.P.slow_cm - self.P.stop_cm)))
+                # A single missing center echo follows the legacy gate's
+                # FORWARD -> FORWARD_SLOW behavior. All-three-missing was
+                # rejected above, so this remains a guarded slow advance.
+                scale = unknown_forward_scale if C is None else max(0.0, min(1.0, (C - self.P.stop_cm) / (self.P.slow_cm - self.P.stop_cm)))
                 v *= scale; vetoes.append(f"capped at slow: center {_cm(C)}")
         if w < 0 and L is not None and L < self.P.side_near:
             w = 0.0; vetoes.append(f"blocked: left side {_cm(L)}")

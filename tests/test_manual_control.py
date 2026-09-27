@@ -42,6 +42,9 @@ def test_analog_gate_blocks_obstacles_and_turns_toward_walls():
     v, w, veto = gate.check_analog(.8, 0, Mode.MANUAL, 200, 50, 200, True, 2.0)
     assert 0 < v < .8 and w == 0 and "capped at slow" in veto
 
+    v, w, veto = gate.check_analog(.8, 0, Mode.MANUAL, 200, None, 200, True, 2.0)
+    assert 0 < v < .8 and w == 0 and "capped at slow" in veto
+
 
 def test_analog_gate_stale_and_reverse_bursts_stop():
     gate = Gate(DEFAULT, backup_max_s=1.5, backup_rest_s=.5)

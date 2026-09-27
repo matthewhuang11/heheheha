@@ -180,6 +180,7 @@ class Runtime:
                 v, w, analog_veto = self.gate.check_analog(
                     v, w, mode, L, C, R, raw.fresh(now, DEFAULT.sensor_stale_s), now,
                     cfg.get("manual", {}).get("max_reverse", 0.35),
+                    cfg.get("manual", {}).get("slow_factor", 0.58),
                 )
             wheels = mix(v, w, cfg.get("manual", {}), cmd.slow)
             self.motors.apply_wheels(*wheels); self.watchdog.fed()
