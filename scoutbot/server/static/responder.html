@@ -58,7 +58,10 @@ input[type=text]{flex:1;background:#0b0f14;color:var(--tx);border:1px solid var(
 .srow2 input[type=range]{width:100%}
 #down{position:fixed;inset:0;background:rgba(13,17,23,.82);display:none;align-items:center;justify-content:center;z-index:20;font-size:20px;color:#ffb3ae;text-align:center;padding:20px}
 #offBanner{display:none;background:#3a2f12;border-bottom:1px solid var(--y);color:#f2cc60;padding:6px 16px;font-size:13px}
-.mapbar{display:flex;gap:6px;align-items:center;margin-bottom:6px;font-size:12px}
+  .mapbar{display:flex;gap:6px;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px;flex-wrap:wrap}
+  .maptools{display:flex;gap:5px;align-items:center;flex-wrap:wrap}.maptools button{padding:4px 8px;font-size:12px}.maptools button.active{background:#1f6feb;border-color:#58a6ff;color:#fff}
+  .mapnote{color:var(--mut);font-size:11.5px}.mapnote b{color:var(--tx);font-weight:600}
+  .maplegend{display:flex;gap:8px 14px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:7px}.maplegend strong{color:var(--tx);font-weight:600}
 @media(max-width:800px){
   header{padding:8px 10px;gap:6px}h1{font-size:14px}#estop{padding:10px 26px;font-size:16px}
   header .chip:not(.mode){font-size:11px;padding:1px 7px}
@@ -109,15 +112,18 @@ details summary{cursor:pointer;color:var(--mut);font-size:12px}
 </section>
 <section id="colM">
   <div class="card">
-    <h2><span>Map <span class="muted">(approximate)</span></span><span id="mapInfo" class="muted"></span></h2>
-    <div class="mapbar"><button id="mapMode" aria-label="Switch map view">Fit all</button><span class="muted">click a survivor pin to open it</span></div>
+    <h2><span>Operational map <span class="muted">(estimated)</span></span><span id="mapInfo" class="muted"></span></h2>
+    <div class="mapbar">
+      <div class="maptools" role="group" aria-label="Map view"><button id="mapOverview" class="active" aria-pressed="true">Overview</button><button id="mapFollow" aria-pressed="false">Follow robot</button><label id="simTruthWrap" class="muted" hidden><input type="checkbox" id="mapTruth"> scenario reference</label></div>
+      <span class="mapnote"><b>Blue arrow = robot estimate.</b> Click a survivor marker for details.</span>
+    </div>
     <canvas id="map" width="700" height="700"></canvas>
-    <div class="legend">
-      <span><span class="dot" style="background:var(--b)"></span>robot (estimate)</span>
-      <span><span class="dot" style="background:#6e768166"></span>drift circle (could be anywhere inside)</span>
-      <span><span class="dot" style="background:#8b949e"></span>obstacle readings</span>
-      <span id="lgTrue" hidden><span class="dot" style="background:#3fb95066"></span>true position (sim)</span>
-      <span><span class="dot" style="background:var(--r)"></span>survivor (triage color)</span>
+    <div class="maplegend">
+      <span><span class="dot" style="background:var(--b)"></span><strong>Robot</strong> estimated position and route</span>
+      <span><span class="dot" style="background:#6e768166"></span>uncertainty area</span>
+      <span><span class="dot" style="background:#8b949e"></span>observed obstacles</span>
+      <span><span class="dot" style="background:var(--r)"></span><strong>Survivor</strong> triage color</span>
+      <span id="lgTrue" hidden><span class="dot" style="background:#3fb95066"></span>simulation reference only</span>
     </div>
   </div>
   <div class="card">
@@ -187,6 +193,7 @@ setInterval(() => send({ type: "heartbeat", t: Date.now() / 1000 }), 100);
 function setupHello() {
   $("testCard").hidden = !HELLO.test_controls;
   $("lgTrue").hidden = !HELLO.world;
+  $("simTruthWrap").hidden = !HELLO.world;
   if (HELLO.test_controls && HELLO.distance === "sliders") buildSliders();
 }
 function buildSliders() {
@@ -400,8 +407,17 @@ function drawOverlay() {
 
 // ---- map ----
 let MAP = null;
-let FOLLOW = false, PINS = [];
-$("mapMode").onclick = () => { FOLLOW = !FOLLOW; $("mapMode").textContent = FOLLOW ? "Follow robot" : "Fit all"; drawMap(); };
+let MAP_VIEW = "overview", SHOW_SIM_REFERENCE = false, PINS = [];
+function setMapView(view) {
+  MAP_VIEW = view;
+  for (const [id, selected] of [["mapOverview", view === "overview"], ["mapFollow", view === "follow"]]) {
+    $(id).classList.toggle("active", selected); $(id).setAttribute("aria-pressed", String(selected));
+  }
+  drawMap();
+}
+$("mapOverview").onclick = () => setMapView("overview");
+$("mapFollow").onclick = () => setMapView("follow");
+$("mapTruth").onchange = e => { SHOW_SIM_REFERENCE = e.target.checked; drawMap(); };
 $("map").addEventListener("click", e => {
   const c = $("map"), r = c.getBoundingClientRect(), mx = (e.clientX - r.left) * c.width / r.width, my = (e.clientY - r.top) * c.height / r.height;
   let best = null, bd = 18 * c.width / r.width;
@@ -416,44 +432,61 @@ function drawMap() {
   const c = $("map"), x = c.getContext("2d"), W = c.width, H = c.height; x.clearRect(0, 0, W, H);
   const pts = [...MAP.trail, ...MAP.obstacles, [S.pose.x_cm, S.pose.y_cm], ...S.survivors.map(s => [s.x, s.y])];
   let minx, maxx, miny, maxy;
-  if (FOLLOW) { minx = S.pose.x_cm - 250; maxx = S.pose.x_cm + 250; miny = S.pose.y_cm - 250; maxy = S.pose.y_cm + 250; }
+  if (MAP_VIEW === "follow") { minx = S.pose.x_cm - 250; maxx = S.pose.x_cm + 250; miny = S.pose.y_cm - 250; maxy = S.pose.y_cm + 250; }
   else if (MAP.world) { minx = 0; miny = 0; maxx = MAP.world.size[0]; maxy = MAP.world.size[1]; }
   else { minx = Math.min(...pts.map(p => p[0])) - 100; maxx = Math.max(...pts.map(p => p[0])) + 100; miny = Math.min(...pts.map(p => p[1])) - 100; maxy = Math.max(...pts.map(p => p[1])) + 100; }
-  const span = Math.max(maxx - minx, maxy - miny, 300), k = (W - 30) / span;
+  const span = Math.max(maxx - minx, maxy - miny, 300), k = (W - 46) / span;
   const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
   const T = (px, py) => [W / 2 + (px - cx) * k, H / 2 - (py - cy) * k];   // +y is up on screen
-  // grid (1 m)
+  // Quiet, labelled grid gives the responder an orientation and a usable scale.
+  const gridCm = k > 1.5 ? 50 : k > .7 ? 100 : 200;
   x.strokeStyle = "#1c2230"; x.lineWidth = 1;
-  for (let g = Math.floor((cx - span) / 100) * 100; g < cx + span; g += 100) { let [a] = T(g, 0); x.beginPath(); x.moveTo(a, 0); x.lineTo(a, H); x.stroke(); }
-  for (let g = Math.floor((cy - span) / 100) * 100; g < cy + span; g += 100) { let [, b] = T(0, g); x.beginPath(); x.moveTo(0, b); x.lineTo(W, b); x.stroke(); }
-  if (MAP.world) {           // sim: draw the true room faintly
+  for (let g = Math.floor(minx / gridCm) * gridCm; g <= maxx; g += gridCm) { const [a] = T(g, 0); x.beginPath(); x.moveTo(a, 0); x.lineTo(a, H); x.stroke(); }
+  for (let g = Math.floor(miny / gridCm) * gridCm; g <= maxy; g += gridCm) { const [, b] = T(0, g); x.beginPath(); x.moveTo(0, b); x.lineTo(W, b); x.stroke(); }
+  x.fillStyle = "#6e7681"; x.font = "11px system-ui";
+  for (let g = Math.ceil(minx / 100) * 100; g <= maxx; g += 100) { const [a] = T(g, 0); if (a > 28 && a < W - 24) x.fillText(`${g / 100}m`, a + 3, H - 27); }
+  if (MAP.world && SHOW_SIM_REFERENCE) { // Never mix demo ground truth into the operational estimate by default.
     x.strokeStyle = "#30363d"; x.lineWidth = 2; const [a0, b0] = T(0, 0), [a1, b1] = T(MAP.world.size[0], MAP.world.size[1]); x.strokeRect(a0, b1, a1 - a0, b0 - b1);
     for (const w of MAP.world.walls) { const [p, q2] = T(w[0], w[1]), [r, s] = T(w[2], w[3]); x.beginPath(); x.moveTo(p, q2); x.lineTo(r, s); x.stroke(); }
     x.fillStyle = "#30363d"; for (const b of MAP.world.boxes) { const [p, q2] = T(b[0], b[1] + b[3]); x.fillRect(p, q2, b[2] * k, b[3] * k); }
     for (const sv of MAP.world.survivors) { const [p, q2] = T(sv[0], sv[1]); x.strokeStyle = "#3fb95088"; x.beginPath(); x.arc(p, q2, 6, 0, 7); x.stroke(); }
     if (MAP.true_trail.length) { x.strokeStyle = "#3fb95055"; x.lineWidth = 2; x.beginPath(); MAP.true_trail.forEach((p, i) => { const [a, b] = T(p[0], p[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke(); }
   }
-  x.fillStyle = "#8b949e"; for (const o of MAP.obstacles) { const [a, b] = T(o[0], o[1]); x.fillRect(a - 1.5, b - 1.5, 3, 3); }
-  x.strokeStyle = "#58a6ff99"; x.lineWidth = 2; x.beginPath(); MAP.trail.forEach((p, i) => { const [a, b] = T(p[0], p[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke();
+  // Sonar readings are observations, not walls. Keep them subdued so they cannot overpower live hazards.
+  x.fillStyle = "#8b949e88"; for (const o of MAP.obstacles) { const [a, b] = T(o[0], o[1]); x.fillRect(a - 1, b - 1, 2, 2); }
+  if (MAP.trail.length) {
+    x.strokeStyle = "#58a6ffaa"; x.lineWidth = 3; x.beginPath(); MAP.trail.forEach((p, i) => { const [a, b] = T(p[0], p[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke();
+    const [ea, eb] = T(MAP.trail[0][0], MAP.trail[0][1]); x.fillStyle = "#e6edf3"; x.fillRect(ea - 4, eb - 4, 8, 8); x.fillStyle = "#8b949e"; x.font = "bold 11px system-ui"; x.fillText("ENTRY", ea + 7, eb - 7);
+  }
   PINS = [];
   for (const s of S.survivors) {
     const [a, b] = T(s.x, s.y), col = TRI[s.category] || "#8b949e";
     PINS.push({ id: s.id, a, b });
-    x.fillStyle = col + "22"; x.beginPath(); x.arc(a, b, Math.max(6, s.u * k), 0, 7); x.fill();
-    x.fillStyle = col; x.beginPath(); x.arc(a, b, s.id === sel ? 9 : 7, 0, 7); x.fill();
-    x.fillStyle = "#e6edf3"; x.font = "bold 12px system-ui"; x.fillText(s.id, a + 10, b - 8);
+    x.fillStyle = col + "22"; x.beginPath(); x.arc(a, b, Math.max(8, s.u * k), 0, 7); x.fill();
+    x.fillStyle = col; x.beginPath(); x.arc(a, b, s.id === sel ? 10 : 8, 0, 7); x.fill();
+    x.fillStyle = "#e6edf3"; x.font = "bold 12px system-ui"; x.fillText(`${s.category || "UNKNOWN"} · ${s.id}`, a + 12, b - 9);
   }
-  if (S.true_pose) { const [a, b] = T(S.true_pose.x_cm, S.true_pose.y_cm); x.fillStyle = "#3fb95088"; x.beginPath(); x.arc(a, b, 7, 0, 7); x.fill(); }
+  if (S.true_pose && SHOW_SIM_REFERENCE) { const [a, b] = T(S.true_pose.x_cm, S.true_pose.y_cm); x.fillStyle = "#3fb95088"; x.beginPath(); x.arc(a, b, 7, 0, 7); x.fill(); }
   const [ra, rb] = T(S.pose.x_cm, S.pose.y_cm), hd = S.pose.heading_deg * Math.PI / 180;
   x.fillStyle = "#6e768133"; x.beginPath(); x.arc(ra, rb, S.pose.uncertainty_cm * k, 0, 7); x.fill();
-  if (S.pose.uncertainty_cm * k > 30) { x.fillStyle = "#8b949e"; x.font = "11px system-ui"; x.fillText(`drift ±${S.pose.uncertainty_cm.toFixed(0)} cm`, ra + 6, rb + S.pose.uncertainty_cm * k * 0.72 + 4); }
+  if (S.pose.uncertainty_cm * k > 30) { x.fillStyle = "#8b949e"; x.font = "11px system-ui"; x.fillText(`uncertainty ±${S.pose.uncertainty_cm.toFixed(0)} cm`, ra + 6, rb + S.pose.uncertainty_cm * k * 0.72 + 4); }
+  // Current sensor fan answers the immediate responder question: what is clear right now?
+  const sensorAngles = [30, 0, -30], readings = S.sensors.filtered || [];
+  for (let i = 0; i < 3; i++) {
+    const d = readings[i]; if (d == null) continue;
+    const a = hd + sensorAngles[i] * Math.PI / 180, dist = Math.min(300, d) * k;
+    x.strokeStyle = d < 25 ? "#f85149" : d < 60 ? "#d29922" : "#3fb950"; x.lineWidth = 2; x.setLineDash([5, 4]); x.beginPath(); x.moveTo(ra, rb); x.lineTo(ra + dist * Math.cos(a), rb - dist * Math.sin(a)); x.stroke(); x.setLineDash([]);
+  }
   x.fillStyle = "#58a6ff"; x.beginPath();
   x.moveTo(ra + 14 * Math.cos(hd), rb - 14 * Math.sin(hd)); x.lineTo(ra + 8 * Math.cos(hd + 2.5), rb - 8 * Math.sin(hd + 2.5)); x.lineTo(ra + 8 * Math.cos(hd - 2.5), rb - 8 * Math.sin(hd - 2.5)); x.fill();
+  x.fillStyle = "#e6edf3"; x.font = "bold 11px system-ui"; x.fillText("ROBOT · estimate", ra + 13, rb + 18);
+  // North is always screen-up, even while the robot turns.
+  x.fillStyle = "#e6edf3"; x.font = "bold 12px system-ui"; x.fillText("N", W - 24, 24); x.strokeStyle = "#e6edf3"; x.lineWidth = 2; x.beginPath(); x.moveTo(W - 18, 29); x.lineTo(W - 18, 50); x.moveTo(W - 18, 29); x.lineTo(W - 23, 38); x.moveTo(W - 18, 29); x.lineTo(W - 13, 38); x.stroke();
   // scale bar: 1 m
   const sb = 100 * k; x.strokeStyle = "#e6edf3"; x.lineWidth = 2; x.beginPath(); x.moveTo(14, H - 16); x.lineTo(14 + sb, H - 16);
   x.moveTo(14, H - 21); x.lineTo(14, H - 11); x.moveTo(14 + sb, H - 21); x.lineTo(14 + sb, H - 11); x.stroke();
   x.fillStyle = "#e6edf3"; x.font = "12px system-ui"; x.fillText("1 m", 18 + sb, H - 12);
-  $("mapInfo").textContent = `grid 1 m · drift ±${S.pose.uncertainty_cm.toFixed(0)} cm`;
+  $("mapInfo").textContent = `${MAP_VIEW === "follow" ? "following robot" : "overview"} · uncertainty ±${S.pose.uncertainty_cm.toFixed(0)} cm`;
 }
 connect();
 </script>
